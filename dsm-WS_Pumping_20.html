@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DSM WS Seller Tool – CERC 2024 (Revised with Sign Convention & Day-wise Summary)</title>
+
+<!-- Without changing anything in above calculation, added special-case handling when Schedule and AVC are nil but Actual > 0 -->
+
+<!-- XLSX Library embedded as Blob URL (no external dependency) -->
+<!-- jsPDF + html2canvas for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+(function(){
+  var xlsxLoaded = false;
+  
+  function loadXLSXLibrary() {
+    if(xlsxLoaded || typeof XLSX !== 'undefined') return;
+    
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.async = true;
+    
+    script.onerror = function(){
+      var script2 = document.createElement('script');
+      script2.src = 'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';
+      script2.async = true;
+      
+      script2.onerror = function(){
+        var script3 = document.createElement('script');
+        script3.src = 'xlsx.full.min.js';
+        script3.onerror = function(){
+          alert('ERROR: XLSX library not available.\n\nTo fix:\n1. Ensure internet connection, OR\n2. Download from https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+        };
+        document.head.appendChild(script3);
+      };
+      document.head.appendChild(script2);
+    };
+    document.head.appendChild(script);
+  }
+  
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', loadXLSXLibrary);
+  } else {
+    loadXLSXLibrary();
+  }
+})();
+</script>
+
+<style>
+body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:20px; }
+h1,h2,h3 { margin:8px 0; }
+.panel { background:#fff; padding:15px; border-radius:6px; margin-bottom:15px; }
+button { padding:6px 12px; margin:4px; cursor:pointer; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th,td { border:1px solid #ccc; padding:6px; text-align:center; font-size:12px; }
+th { background:#f0f0f0; }
+input,select { padding:5px; }
+.badge { background:#0b5ed7; color:#fff; padding:4px 8px; border-radius:4px; font-size:12px; margin:2px; display:inline-block; }
+.table-wrap { max-height:350px; overflow:auto; }
+.small { font-size:12px; }
+.tab-buttons { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.tab { display:none; padding-top:8px; }
+.card-row { display:flex; gap:12px; margin-top:8px; flex-wrap:wrap; }
+.card { background:#fff; border:1px solid #e6e9ee; border-radius:6px; padding:10px; min-width:160px; text-align:center; }
+.card h4{ margin:0; font-size:13px; color:#666 }
+.card p{ margin:8px 0 0; font-weight:600; font-size:16px }
+.small-muted{ font-size:12px; color:#666 }
+.sign-negative { color: #d9534f; font-weight: bold; }
+.sign-positive { color: #5cb85c; font-weight: bold; }
+
+/* Penalty Breakdown Styles */
+.penalty-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.penalty-item {
+  border: 1px solid #ddd;
+  border-left: 4px solid #d9534f;
+  padding: 12px;
+  border-radius: 4px;
+  background: #fff5f5;
+}
+
+.penalty-item h5 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.penalty-item p {
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.penalty-item .penalty-amount {
+  color: #d9534f;
+  font-weight: bold;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.penalty-item button {
+  background: #d9534f;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  margin-top: 4px;
+  transition: background 0.2s;
+}
+
+.penalty-item button:hover {
+  background: #c9302c;
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.4);
+  display: none;
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 5% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 95%;
+  max-width: 1100px;
+  border-radius: 6px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+}
+</style>
+</head>
+
+<body>
+
+<h1>DSM Calculation Tool – WS Seller (CERC 2024 + 2026 Roadmap)</h1>
+<p style="color:#666; font-size:12px;">Updated: Jan 2026 | Regulatory Version Support + Risk Scoring + Forecasting Module</p>
+
+<!-- Regulatory Version Selector Banner -->
+<div style="background: linear-gradient(90deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #ff9800; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
+  <strong style="font-size: 13px;">🔔 CERC Regulatory Timeline Alert</strong>
+  <p style="margin: 8px 0 0; font-size: 11px; line-height: 1.5;">
+    <strong>Current (2024-2025):</strong> Wind ±15%, Solar ±10% | 
+    <strong style="color: #ff6b6b;">Upcoming 2026:</strong> Wind ±10%, Solar ±5% | 
+    <strong>2031:</strong> Par with General Sellers
+  </p>
+  <label style="margin-top: 8px; display: inline-block;"><input type="radio" name="regulatoryVer" value="2024" checked> Current 2024 Norms</label>
+  <label style="margin-left: 15px;"><input type="radio" name="regulatoryVer" value="2026" onclick="updateRegulatoryVersion('2026')"> 2026 Projection</label>
+  <label style="margin-left: 15px;"><input type="radio" name="regulatoryVer" value="2031" onclick="updateRegulatoryVersion('2031')"> 2031 Roadmap</label>
+</div>
+
+<!-- ================= INPUT PANEL ================= -->
+<div class="panel">
+
+<h2>1. Input</h2>
+
+<label><input id="modeManual" type="radio" name="mode" value="manual" checked> Manual Entry</label>
+<label><input id="modeExcel" type="radio" name="mode" value="excel"> Excel Upload</label>
+
+<!-- MANUAL ENTRY -->
+<div id="manualSection">
+<h3>Manual Slot-wise Entry</h3>
+<button onclick="addManualRow()">Add Row</button>
+
+<table id="manualTable">
+<tr>
+<th>Date (DD-MM-YYYY)</th>
+<th>Time Slot</th>
+<th>Scheduled (MWh)</th>
+<th>Actual (MWh)</th>
+<th>Available Capacity (MWh)</th>
+<th>PPA Rate (₹/KWh)</th>
+<th>Action</th>
+</tr>
+</table>
+</div>
+
+<!-- EXCEL UPLOAD -->
+<div id="excelSection" style="display:none">
+<h3>Excel Upload</h3>
+<input type="file" id="excelFile" accept=".xlsx,.xls">
+<br><br>
+<label>Sheet:</label>
+<select id="sheetSelect"></select>
+
+<h4>Column Mapping (Header Row = Row 2)
+  <span style="float:right; font-size:12px;">
+    <button onclick="saveMapping()" style="padding:4px 8px; background:#28a745; color:white; border:none; border-radius:3px; cursor:pointer; margin:0 2px;">💾 Save</button>
+    <button onclick="loadMapping()" style="padding:4px 8px; background:#0b5ed7; color:white; border:none; border-radius:3px; cursor:pointer; margin:0 2px;">📂 Load</button>
+    <button onclick="resetMapping()" style="padding:4px 8px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer; margin:0 2px;">🔄 Reset</button>
+  </span>
+</h4>
+<table>
+<tr><td>Date</td><td><select id="mapDate"></select></td></tr>
+<tr><td>Time Slot</td><td><select id="mapSlot"></select></td></tr>
+<tr><td>Scheduled</td><td><select id="mapSch"></select></td></tr>
+<tr><td>Actual</td><td><select id="mapAct"></select></td></tr>
+<tr><td>Available Capacity</td><td><select id="mapAC"></select></td></tr>
+<tr><td>PPA Rate (₹/KWh)</td><td><select id="mapRate"></select></td></tr>
+</table>
+<p style="font-size:11px; color:#666; margin-top:8px;">💡 Tip: Your mapping is auto-saved to browser. Save & Load buttons for JSON export/import.</p>
+</div>
+
+<br>
+<button id="runBtn">Run DSM Calculation</button>
+
+</div>
+
+<!-- ================= OUTPUT PANEL ================= -->
+<div class="panel">
+
+<h2>2. Output Summary</h2>
+<span class="badge" id="totalSlots">Slots: 0</span>
+<span class="badge" id="totalDSM">DSM: ₹0</span>
+
+<h3 style="margin-top:12px; margin-bottom:8px;">Summary of All Trades</h3>
+<div class="table-wrap" style="max-height:none; margin-bottom:15px;">
+  <table>
+    <thead>
+      <tr>
+        <th>No of Trades</th>
+        <th>Scheduled (MWh)</th>
+        <th>Actual (MWh)</th>
+        <th>DSM Payable (₹)</th>
+        <th>DSM Receivable (₹)</th>
+        <th>Net Settlement (₹)</th>
+      </tr>
+    </thead>
+    <tbody id="summaryTradesBody">
+      <tr>
+        <td>0</td><td>0.00</td><td>0.00</td><td>₹0</td><td>₹0</td><td>₹0</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="tab-buttons">
+  <button id="btnUnder">Under Drawal</button>
+  <button id="btnUnder15">Under >15%</button>
+  <button id="btnOver">Over Drawal</button>
+</div>
+
+<div class="tab-buttons" style="background:#f9f9f9; padding:10px; border-radius:6px; margin:15px 0;">
+  <strong style="display:block; margin-bottom:8px; color:#333;">📊 ANALYTICS & EXPORT:</strong>
+  <button id="btnRiskScore" style="background:#ff6b6b; color:white;">Risk Score & 2026 Projection</button>
+  <button id="btnForecastRecommendation" style="background:#4ecdc4; color:white;">Forecasting Recommendations</button>
+  <button id="btnExportSummaryPDF" style="background:#9b59b6; color:white;">📋 2-Page PDF Summary</button>
+  <button id="btnExport" style="background:#0b5ed7; color:white;">Export Detailed Excel</button>
+  <button id="btnExportAll" style="background:#28a745; color:white;">Export ALL Reports</button>
+  <button id="btnExportPDF" style="background:#dc3545; color:white;">Export PDF Report</button>
+</div>
+
+<!-- Risk Score Panel (Hidden Initially) -->
+<div id="riskScorePanel" style="display:none; background:#fff5f5; border:1px solid #ffdddd; padding:15px; border-radius:6px; margin:15px 0;">
+  <h3>⚠️ Risk Assessment & 2026 Regulatory Projection</h3>
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:12px; margin-top:12px;">
+    <div style="background:#fff; border:1px solid #ddd; padding:12px; border-radius:4px; border-left:4px solid #ff6b6b;">
+      <h4 style="margin:0 0 8px 0; font-size:12px; color:#666;">Overall Risk Score (2024)</h4>
+      <p style="margin:0; font-size:20px; font-weight:bold; color:#333;" id="riskScore2024">--</p>
+      <small style="color:#666;">Compliance Status</small>
+    </div>
+    <div style="background:#fff; border:1px solid #ddd; padding:12px; border-radius:4px; border-left:4px solid #ff9800;">
+      <h4 style="margin:0 0 8px 0; font-size:12px; color:#666;">Projected 2026 Impact</h4>
+      <p style="margin:0; font-size:20px; font-weight:bold; color:#333;" id="riskScore2026">--</p>
+      <small style="color:#666;">If bands tighten</small>
+    </div>
+    <div style="background:#fff; border:1px solid #ddd; padding:12px; border-radius:4px; border-left:4px solid #4ecdc4;">
+      <h4 style="margin:0 0 8px 0; font-size:12px; color:#666;">Forecasting Accuracy Needed</h4>
+      <p style="margin:0; font-size:18px; font-weight:bold; color:#333;" id="forecastAccuracy">--</p>
+      <small style="color:#666;">For 2026 compliance</small>
+    </div>
+    <div style="background:#fff; border:1px solid #ddd; padding:12px; border-radius:4px; border-left:4px solid #5cb85c;">
+      <h4 style="margin:0 0 8px 0; font-size:12px; color:#666;">High Risk Slots (>15%)</h4>
+      <p style="margin:0; font-size:18px; font-weight:bold; color:#333;" id="highRiskSlots">--</p>
+      <small style="color:#666;">Immediate action needed</small>
+    </div>
+  </div>
+  
+  <h4 style="margin-top:15px; margin-bottom:8px;">📈 Deviation Band Compliance Analysis</h4>
+  <table style="width:100%; margin-top:10px; border-collapse:collapse;">
+    <tr style="background:#f5f5f5;">
+      <th style="text-align:left; padding:8px; border-bottom:2px solid #ddd;">Metric</th>
+      <th style="text-align:center; padding:8px; border-bottom:2px solid #ddd;">2024 Band</th>
+      <th style="text-align:center; padding:8px; border-bottom:2px solid #ddd;">2024 Status</th>
+      <th style="text-align:center; padding:8px; border-bottom:2px solid #ddd;">2026 Band</th>
+      <th style="text-align:center; padding:8px; border-bottom:2px solid #ddd;">2026 Status</th>
+      <th style="text-align:center; padding:8px; border-bottom:2px solid #ddd;">Action</th>
+    </tr>
+    <tr>
+      <td style="padding:8px; border-bottom:1px solid #eee;"><strong>Wind Tolerance</strong></td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee;">±15%</td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee;" id="wind2024Status">-</td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee; background:#fff3cd;">±10%</td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee; background:#fff3cd;" id="wind2026Status">-</td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee;"><button onclick="toggleRiskDetails('wind')" style="padding:4px 8px; font-size:11px; background:#ff9800; color:white; border:none; border-radius:3px; cursor:pointer;">Review</button></td>
+    </tr>
+    <tr>
+      <td style="padding:8px; border-bottom:1px solid #eee;"><strong>Solar Tolerance</strong></td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee;">±10%</td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee;" id="solar2024Status">-</td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee; background:#fff3cd;">±5%</td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee; background:#fff3cd;" id="solar2026Status">-</td>
+      <td style="text-align:center; padding:8px; border-bottom:1px solid #eee;"><button onclick="toggleRiskDetails('solar')" style="padding:4px 8px; font-size:11px; background:#ff9800; color:white; border:none; border-radius:3px; cursor:pointer;">Review</button></td>
+    </tr>
+  </table>
+</div>
+
+<!-- Forecasting Recommendations Panel (Hidden Initially) -->
+<div id="forecastPanel" style="display:none; background:#e8f5e9; border:1px solid #c8e6c9; padding:15px; border-radius:6px; margin:15px 0;">
+  <h3>📊 Forecasting & Variance Reduction Recommendations</h3>
+  <div id="forecastRecommendations" style="margin-top:12px;">
+    <!-- Populated by generateForecastRecommendations() -->
+  </div>
+</div>
+
+<!-- ============== UNDER DRAWAL TAB ============== -->
+<div id="tab-under" class="tab">
+  <h3>Under Drawal (Short Drawal / Under Injection)</h3>
+
+  <div class="card-row">
+    <div class="card"><h4>Total Slots</h4><p id="u_slots">0</p></div>
+    <div class="card"><h4>Scheduled Energy (MWh)</h4><p id="u_sch">0</p></div>
+    <div class="card"><h4>Actual Energy (MWh)</h4><p id="u_act">0</p></div>
+    <div class="card"><h4>Total Receivable (₹)</h4><p id="u_dsm" class="sign-negative">₹0</p></div>
+    <div class="card"><h4>Paid @ RR (₹)</h4><p id="u_atrr">₹0</p></div>
+    <div class="card"><h4>Penalties/Loss (₹)</h4><p id="u_aboverr">₹0</p></div>
+  </div>
+
+  <h4 style="margin-top:12px">Penalty & Potential Loss Breakdown</h4>
+  <div id="penaltyBreakdown" class="penalty-breakdown">
+    <!-- Populated by buildPenaltyBreakdown() -->
+  </div>
+
+  <h4 style="margin-top:12px">Day-wise Summary (Under)</h4>
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Scheduled (MWh)</th><th>Actual (MWh)</th><th>Deviation (MWh)</th><th>Deviation %</th><th>DSM Payable (₹)</th><th>Status</th></tr>
+    </thead>
+    <tbody id="under_daywise"></tbody>
+  </table>
+  </div>
+
+  <h4 style="margin-top:12px">Slab-wise Summary (Under)</h4>
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Slab</th><th>Slots</th><th>Scheduled (MWh)</th><th>Actual (MWh)</th><th>DSM Payable (₹)</th><th>Penalty (₹)</th><th>Loss >15% (₹)</th><th>Action</th></tr>
+    </thead>
+    <tbody id="under_slab"></tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ============== OVER DRAWAL TAB ============== -->
+<div id="tab-over" class="tab">
+  <h3>Over Drawal</h3>
+
+  <div class="card-row">
+    <div class="card"><h4>Total Slots</h4><p id="o_slots">0</p></div>
+    <div class="card"><h4>Scheduled Energy (MWh)</h4><p id="o_sch">0</p></div>
+    <div class="card"><h4>Actual Energy (MWh)</h4><p id="o_act">0</p></div>
+    <div class="card"><h4>Total Payable (₹)</h4><p id="o_dsm" class="sign-positive">₹0</p></div>
+    <div class="card"><h4>Paid @ RR (₹)</h4><p id="o_atrr">₹0</p></div>
+    <div class="card"><h4>Surcharges (₹)</h4><p id="o_aboverr">₹0</p></div>
+  </div>
+
+  <h4 style="margin-top:12px">Day-wise Summary (Over)</h4>
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Scheduled (MWh)</th><th>Actual (MWh)</th><th>Deviation (MWh)</th><th>Deviation %</th><th>DSM Payable (₹)</th><th>Status</th></tr>
+    </thead>
+    <tbody id="over_daywise"></tbody>
+  </table>
+  </div>
+
+  <h4 style="margin-top:12px">Slab-wise Summary (Over)</h4>
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Slab</th><th>Slots</th><th>Scheduled (MWh)</th><th>Actual (MWh)</th><th>DSM Payable (₹)</th><th>Surcharge @ 1.1x (₹)</th><th>Surcharge @ 2x (₹)</th><th>Action</th></tr>
+    </thead>
+    <tbody id="over_slab"></tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ============== UNDER >15% TAB ============== -->
+<div id="tab-under15" class="tab">
+  <h3>Under Drawal (Variance >15%)</h3>
+
+  <div class="card-row">
+    <div class="card"><h4>Total Slots</h4><p id="u15_slots">0</p></div>
+    <div class="card"><h4>Scheduled Energy (MWh)</h4><p id="u15_sch">0</p></div>
+    <div class="card"><h4>Actual Energy (MWh)</h4><p id="u15_act">0</p></div>
+    <div class="card"><h4>Total Receivable (₹)</h4><p id="u15_dsm" class="sign-negative">₹0</p></div>
+    <div class="card"><h4>Paid @ RR (₹)</h4><p id="u15_atrr">₹0</p></div>
+    <div class="card"><h4>Loss >15% (₹)</h4><p id="u15_aboverr">₹0</p></div>
+  </div>
+
+  <h3 style="margin-top:12px">Slot-wise Details (Drill-down)</h3>
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th><th>Time Slot</th><th>Scheduled</th><th>Actual</th><th>Available Cap.</th><th>Deviation %</th><th>Type</th><th>DSM (₹)</th><th>Paid @RR (₹)</th><th>Loss >15% (₹)</th>
+        </tr>
+    </thead>
+    <tbody id="slotBody15"></tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ============== DRILL-DOWN MODAL ============== -->
+<div id="drilldownModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeDrilldown()">&times;</span>
+    <h3 id="modalTitle">Details</h3>
+    <div class="table-wrap">
+      <table id="drilldownTable">
+        <thead id="drilldownHead"></thead>
+        <tbody id="drilldownBody"></tbody>
+      </table>
+    </div>
+    <div style="text-align:right; margin-top:15px; padding-top:15px; border-top:1px solid #ddd;">
+      <strong id="drilldownTotal" style="font-size:14px;">Total: ₹0.00</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ============== SLOT DETAILS TABLE ============== -->
+<h3 style="margin-top:12px">Slot-wise Details – Full Breakdown</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Date</th><th>Time Slot</th><th>Scheduled (MWh)</th><th>Actual (MWh)</th><th>AC</th><th>Dev %</th><th>Type</th><th>Slab 1 (₹)</th><th>Slab 2 (₹)</th><th>Slab 2 Pen (₹)</th><th>Slab 3 (₹)</th><th>Total (₹)</th>
+</tr>
+</thead>
+<tbody id="slotBody"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+/* === State & constants === */
+let workbook, sheetData = [], headers = [], resultRows = [];
+const THRESH = { v1: 10, v2: 15 };
+const RATE_MULTIPLIER = 10;
+const MULT_U = [1, 0.9, 0];
+const MULT_O = [1, 1.1, 2];
+
+/* === Date conversion function (DD-MM-YYYY) === */
+function convertExcelDate(excelDateNum) {
+  if(!excelDateNum) return '';
+  if(typeof excelDateNum === 'string') return excelDateNum;
+  if(typeof excelDateNum === 'number') {
+    const date = new Date((excelDateNum - 25569) * 86400 * 1000);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  return '';
+}
+
+const $ = id => document.getElementById(id);
+
+let currentRegulatoryVersion = '2024';
+
+document.addEventListener('DOMContentLoaded', function(){
+  $('modeManual').addEventListener('change', setMode);
+  $('modeExcel').addEventListener('change', setMode);
+  setMode();
+  $('excelFile').addEventListener('change', handleExcelFile);
+  $('sheetSelect').addEventListener('change', loadSheet);
+  $('runBtn').addEventListener('click', processDSM);
+  $('btnUnder').addEventListener('click', ()=> showTab('tab-under'));
+  $('btnUnder15').addEventListener('click', ()=> showTab('tab-under15'));
+  $('btnOver').addEventListener('click', ()=> showTab('tab-over'));
+  $('btnExport').addEventListener('click', exportReport);
+  $('btnExportAll').addEventListener('click', exportAllReports);
+  $('btnExportPDF').addEventListener('click', exportReportPDF);
+  $('btnExportSummaryPDF').addEventListener('click', exportSummaryPDF);
+  $('btnRiskScore').addEventListener('click', ()=> { $('riskScorePanel').style.display = 'block'; generateRiskScore(); });
+  $('btnForecastRecommendation').addEventListener('click', ()=> { $('forecastPanel').style.display = 'block'; generateForecastRecommendations(); });
+  
+  // Regulatory version change listeners
+  document.querySelectorAll('input[name="regulatoryVer"]').forEach(radio => {
+    radio.addEventListener('change', (e) => updateRegulatoryVersion(e.target.value));
+  });
+  
+  addManualRow();
+});
+
+function setMode(){
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  $('manualSection').style.display = (mode === 'manual') ? 'block' : 'none';
+  $('excelSection').style.display = (mode === 'excel') ? 'block' : 'none';
+}
+
+function addManualRow(){
+  const t = $('manualTable');
+  const r = t.insertRow();
+  for(let i=0;i<6;i++){
+    const cell = r.insertCell();
+    const inp = document.createElement('input');
+    if(i === 0) inp.placeholder = 'DD-MM-YYYY';
+    cell.appendChild(inp);
+  }
+  const ac = r.insertCell();
+  const btn = document.createElement('button');
+  btn.textContent = 'X';
+  btn.addEventListener('click', ()=> r.remove());
+  ac.appendChild(btn);
+}
+
+function handleExcelFile(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  if(typeof XLSX === 'undefined'){
+    alert('XLSX library is still loading. Please wait and try again.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    try {
+      workbook = XLSX.read(evt.target.result, { type: 'binary' });
+    } catch(err){
+      alert('Failed to read Excel file.');
+      console.error(err);
+      return;
+    }
+    const sel = $('sheetSelect');
+    sel.innerHTML = '';
+    workbook.SheetNames.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    sel.selectedIndex = 0;
+    loadSheet();
+  };
+  reader.readAsBinaryString(f);
+}
+
+function loadSheet(){
+  const sheetName = $('sheetSelect').value;
+  if(!workbook || !sheetName) return;
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+  headers = rows[1] || [];
+  sheetData = rows.slice(2);
+  const ids = ['mapDate','mapSlot','mapSch','mapAct','mapAC','mapRate'];
+  ids.forEach(id => {
+    const sel = $(id);
+    sel.innerHTML = '';
+    headers.forEach((h,i) => {
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = `${i+1} - ${h}`;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function allocate(dev){
+  let r = Math.abs(dev), a=[0,0,0];
+  a[0] = Math.min(r, 10); r -= a[0];
+  a[1] = Math.min(Math.max(r, 0), 5); r -= a[1];
+  a[2] = Math.max(r, 0);
+  return a;
+}
+
+function processDSM(){
+  resultRows = [];
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  let data = [];
+
+  if(mode === 'manual'){
+    document.querySelectorAll('#manualTable tr').forEach((tr, idx) => {
+      if(idx === 0) return;
+      const inputs = tr.querySelectorAll('input');
+      if(inputs.length < 6) return;
+      const sch = parseFloat(inputs[2].value) || 0;
+      const act = parseFloat(inputs[3].value) || 0;
+      const ac  = parseFloat(inputs[4].value) || 0;
+      const rate= parseFloat(inputs[5].value) || 0;
+      data.push({ Date: inputs[0].value || '', Slot: inputs[1].value || '', sch, act, ac, rate });
+    });
+  } else {
+    if(!sheetData || sheetData.length === 0){
+      data = [];
+    } else {
+      sheetData.forEach(r => {
+        const sch = parseFloat(r[$('mapSch').value]) || 0;
+        const act = parseFloat(r[$('mapAct').value]) || 0;
+        const ac  = parseFloat(r[$('mapAC').value]) || 0;
+        const rate= parseFloat(r[$('mapRate').value]) || 0;
+        const dateVal = r[$('mapDate').value];
+        data.push({
+          Date: convertExcelDate(dateVal), Slot: r[$('mapSlot').value] || '',
+          sch, act, ac, rate
+        });
+      });
+    }
+  }
+
+  const slotBody = $('slotBody');
+  if(slotBody) slotBody.innerHTML = '';
+
+  data.forEach(d => {
+    // Special-case: Schedule = 0, AVC = 0, Actual > 0 -> DSM = Actual * PPA * 10
+    const isSpecialNoSchNoAC = ( (Number(d.sch) === 0) && (!d.ac || Number(d.ac) === 0) && (Number(d.act) > 0) );
+
+    // Allow proceeding if special case, otherwise skip rows with no AVC
+    if((!d.ac || d.ac === 0) && !isSpecialNoSchNoAC) return;
+
+    const ratePerMWh = d.rate * RATE_MULTIPLIER;
+    let dev = 0;
+    if(!d.ac || d.ac === 0) {
+      // For special-case we avoid division by zero — set dev to 0 so it doesn't accidentally trigger Under logic
+      dev = 0;
+    } else {
+      dev = 100 * (d.act - d.sch) / d.ac;
+    }
+    const type = isSpecialNoSchNoAC ? 'Over' : (dev < 0 ? 'Under' : 'Over');
+
+    let dsm = 0, pen = 0, amtAtRR = 0;
+    let s1_ent=0, s1_pd=0, s1_pen=0, s2_ent=0, s2_pd=0, s2_pen=0, s3_ent=0, s3_pd=0, s3_loss=0;
+    
+    if(isSpecialNoSchNoAC) {
+      // --- SPECIAL CASE HANDLING ---
+      // DSM = Actual (MWh) * PPA Rate (₹/kWh) * 10 (i.e., ratePerMWh already multiplied by 10)
+      const mwh = Number(d.act) || 0;
+      const amt = mwh * ratePerMWh;
+      dsm = amt; // positive payable (treated as Over)
+      amtAtRR = amt;
+      pen = 0;
+      // keep slab fields zeroed — main summaries use DSM and Amount_at_RR
+      s1_ent = s1_pd = s1_pen = s2_ent = s2_pd = s2_pen = s3_ent = s3_pd = s3_loss = 0;
+    }
+    else if(type === 'Under') {
+      const slab1_pct = Math.min(Math.abs(dev), 10);
+      const slab1_mwh = (slab1_pct / 100) * d.ac;
+      s1_ent = slab1_mwh * ratePerMWh;
+      s1_pd = s1_ent;
+      s1_pen = 0;
+      dsm += s1_pd;
+      amtAtRR += s1_pd;
+      
+      if(Math.abs(dev) > 10) {
+        const slab2_pct = Math.min(Math.abs(dev) - 10, 5);
+        const slab2_mwh = (slab2_pct / 100) * d.ac;
+        s2_ent = slab2_mwh * ratePerMWh;
+        s2_pd = s2_ent * 0.9;
+        s2_pen = s2_ent * 0.1;
+        dsm += s2_pd;
+        amtAtRR += s2_pd;
+        pen += s2_pen;
+      }
+
+      if(Math.abs(dev) > 15) {
+        const slab3_pct = Math.abs(dev) - 15;
+        const slab3_mwh = (slab3_pct / 100) * d.ac;
+        s3_ent = slab3_mwh * ratePerMWh;
+        s3_pd = 0;
+        s3_loss = s3_ent;
+        pen += s3_loss;
+      }
+    } else {
+      const al = allocate(dev);
+      al.forEach((pct, i) => {
+        const mwh = (pct/100) * d.ac;
+        const amt = mwh * ratePerMWh * MULT_O[i];
+        dsm += amt;
+        if(MULT_O[i] > 1) pen += amt;
+        if(MULT_O[i] === 1) amtAtRR += (mwh * ratePerMWh);
+      });
+    }
+
+    const signedDSM = type === 'Under' ? -dsm : dsm;
+
+    resultRows.push({
+      Date: d.Date, Slot: d.Slot, Scheduled: d.sch, Actual: d.act, AvCap: d.ac,
+      Dev: dev, Type: type, DSM: signedDSM, Pen: pen, Rate: ratePerMWh,
+      Amount_at_RR: amtAtRR, Amount_above_RR: pen,
+      slab1_entitled: s1_ent, slab1_paid: s1_pd, slab1_penalty: s1_pen,
+      slab2_entitled: s2_ent, slab2_paid: s2_pd, slab2_penalty: s2_pen,
+      slab3_entitled: s3_ent, slab3_paid: s3_pd, slab3_loss: s3_loss
+    });
+  });
+
+  buildTabSummaries();
+  render(resultRows);
+
+  const totalSlotsElem = $('totalSlots');
+  const totalDSM = resultRows.reduce((acc, r) => acc + (r.DSM || 0), 0);
+  if(totalSlotsElem) totalSlotsElem.innerText = 'Slots: ' + resultRows.length;
+  const totalDSMelem = $('totalDSM');
+  const sign = totalDSM < 0 ? '-' : '';
+  if(totalDSMelem) totalDSMelem.innerText = 'DSM: ' + sign + '₹' + Math.abs(totalDSM).toFixed(2);
+}
+
+function updateRegulatoryVersion(version) {
+  currentRegulatoryVersion = version;
+  alert(`Switched to ${version === '2026' ? '2026 Projected Norms' : version === '2031' ? '2031 General Seller Parity' : '2024 Current Norms'}\n\nRecalculate to see updated compliance status.`);
+}
+
+function generateRiskScore() {
+  if (!resultRows || resultRows.length === 0) {
+    alert('Please run DSM calculation first.');
+    return;
+  }
+  
+  const allUnder = resultRows.filter(r => r.Type === 'Under');
+  const allOver = resultRows.filter(r => r.Type === 'Over');
+  
+  const maxUnderDev = allUnder.length > 0 ? Math.max(...allUnder.map(r => Math.abs(r.Dev))) : 0;
+  const maxOverDev = allOver.length > 0 ? Math.max(...allOver.map(r => Math.abs(r.Dev))) : 0;
+  const avgUnderDev = allUnder.length > 0 ? allUnder.reduce((s,r) => s + Math.abs(r.Dev), 0) / allUnder.length : 0;
+  const avgOverDev = allOver.length > 0 ? allOver.reduce((s,r) => s + Math.abs(r.Dev), 0) / allOver.length : 0;
+  
+  let risk2024 = 0;
+  if (maxUnderDev > 15 || maxOverDev > 15) risk2024 += 4;
+  else if (maxUnderDev > 10 || maxOverDev > 10) risk2024 += 2;
+  if (avgUnderDev > 8 || avgOverDev > 8) risk2024 += 3;
+  else if (avgUnderDev > 5 || avgOverDev > 5) risk2024 += 1;
+  risk2024 = Math.min(10, risk2024);
+  
+  let risk2026 = 0;
+  if (maxUnderDev > 10 || maxOverDev > 10) risk2026 += 4;
+  else if (maxUnderDev > 5 || maxOverDev > 5) risk2026 += 2;
+  if (avgUnderDev > 5 || avgOverDev > 5) risk2026 += 3;
+  else if (avgUnderDev > 3 || avgOverDev > 3) risk2026 += 1;
+  risk2026 = Math.min(10, risk2026);
+  
+  const highRiskSlots = resultRows.filter(r => Math.abs(r.Dev) > 15).length;
+  const forecastAccNeeded = Math.max(0, (100 - (avgUnderDev + avgOverDev) * 5));
+  
+  $('riskScore2024').innerText = risk2024.toFixed(1) + '/10';
+  $('riskScore2026').innerText = risk2026.toFixed(1) + '/10';
+  $('forecastAccuracy').innerText = forecastAccNeeded.toFixed(0) + '%';
+  $('highRiskSlots').innerText = highRiskSlots + ' slots';
+  
+  $('wind2024Status').innerText = maxUnderDev > 15 || maxOverDev > 15 ? '⚠️ AT RISK' : '✓ OK';
+  $('wind2026Status').innerText = maxUnderDev > 10 || maxOverDev > 10 ? '🔴 FAILS' : '✓ OK';
+  $('solar2024Status').innerText = maxUnderDev > 10 || maxOverDev > 10 ? '⚠️ AT RISK' : '✓ OK';
+  $('solar2026Status').innerText = maxUnderDev > 5 || maxOverDev > 5 ? '🔴 FAILS' : '✓ OK';
+}
+
+function generateForecastRecommendations() {
+  if (!resultRows || resultRows.length === 0) {
+    alert('Please run DSM calculation first.');
+    return;
+  }
+  
+  const under = resultRows.filter(r => r.Type === 'Under');
+  const over = resultRows.filter(r => r.Type === 'Over');
+  
+  const criticalUnder = under.filter(r => Math.abs(r.Dev) > 15);
+  const exceptionUnder = under.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+  const criticalOver = over.filter(r => Math.abs(r.Dev) > 15);
+  const exceptionOver = over.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+  
+  const critUnderLoss = criticalUnder.reduce((s,r) => s + (r.Amount_above_RR || 0), 0);
+  const excUnderPen = exceptionUnder.reduce((s,r) => s + (r.slab2_penalty || 0), 0);
+  const critOverSur = criticalOver.reduce((s,r) => s + (r.Amount_above_RR || 0), 0);
+  const excOverSur = exceptionOver.reduce((s,r) => s + (r.slab2_penalty || 0), 0);
+  
+  let html = `
+    <div style="margin-bottom:15px;">
+      <h4 style="margin:0 0 10px 0; color:#2e7d32;">💡 Priority Actions for 2026 Compliance</h4>
+      
+      ${criticalUnder.length > 0 ? `
+      <div style="background:#fff; border:1px solid #ff9800; padding:10px; border-radius:4px; margin-bottom:10px;">
+        <h5 style="margin:0 0 6px 0; color:#e65100;">🔴 CRITICAL: Under Drawal >15% (${criticalUnder.length} slots)</h5>
+        <p style="margin:0; font-size:12px; color:#666;">These slots incur 100% loss and must be addressed immediately.</p>
+        <p style="margin:6px 0 0; font-size:12px;">
+          <strong>Recommendation:</strong> Implement real-time forecasting, storage integration, or contract renegotiation. 
+          Estimated loss: ₹${critUnderLoss.toFixed(0)}
+        </p>
+      </div>
+      ` : ''}
+      
+      ${exceptionUnder.length > 0 ? `
+      <div style="background:#fff; border:1px solid #ff9800; padding:10px; border-radius:4px; margin-bottom:10px;">
+        <h5 style="margin:0 0 6px 0; color:#e65100;">🟡 MEDIUM: Under Drawal 10-15% (${exceptionUnder.length} slots)</h5>
+        <p style="margin:0; font-size:12px; color:#666;">These attract 10% penalty surcharge on top of base settlement.</p>
+        <p style="margin:6px 0 0; font-size:12px;">
+          <strong>Recommendation:</strong> Improve 4-6 hour ahead forecasting accuracy. Penalty cost: ₹${excUnderPen.toFixed(0)}
+        </p>
+      </div>
+      ` : ''}
+      
+      ${criticalOver.length > 0 ? `
+      <div style="background:#fff; border:1px solid #4ecdc4; padding:10px; border-radius:4px; margin-bottom:10px;">
+        <h5 style="margin:0 0 6px 0; color:#00695c;">🔵 CRITICAL: Over Drawal >15% (${criticalOver.length} slots)</h5>
+        <p style="margin:0; font-size:12px; color:#666;">These incur 200% rate surcharge (2x multiplier).</p>
+        <p style="margin:6px 0 0; font-size:12px;">
+          <strong>Recommendation:</strong> Tighten scheduling accuracy, review contract terms. Surcharge: ₹${critOverSur.toFixed(0)}
+        </p>
+      </div>
+      ` : ''}
+      
+      ${exceptionOver.length > 0 ? `
+      <div style="background:#fff; border:1px solid #4ecdc4; padding:10px; border-radius:4px; margin-bottom:10px;">
+        <h5 style="margin:0 0 6px 0; color:#00695c;">🟢 MEDIUM: Over Drawal 10-15% (${exceptionOver.length} slots)</h5>
+        <p style="margin:0; font-size:12px; color:#666;">These incur 1.1x rate surcharge (10% uplift).</p>
+        <p style="margin:6px 0 0; font-size:12px;">
+          <strong>Recommendation:</strong> Improve dispatch schedule accuracy. Surcharge: ₹${excOverSur.toFixed(0)}
+        </p>
+      </div>
+      ` : ''}
+      
+      ${criticalUnder.length === 0 && exceptionUnder.length === 0 && criticalOver.length === 0 && exceptionOver.length === 0 ? `
+      <div style="background:#e8f5e9; border:1px solid #5cb85c; padding:10px; border-radius:4px;">
+        <h5 style="margin:0 0 6px 0; color:#2e7d32;">✅ EXCELLENT: All deviations within normal bands</h5>
+        <p style="margin:0; font-size:12px; color:#666;">Continue current forecasting and scheduling practices. You are 2026-ready!</p>
+      </div>
+      ` : ''}
+    </div>
+    
+    <h4 style="margin:15px 0 10px 0; color:#2e7d32;">📈 Forecasting Best Practices for 2026</h4>
+    <ul style="margin:0; padding-left:20px; font-size:12px; line-height:1.6;">
+      <li><strong>4-6 Hour Forecast Window:</strong> Use weather data + historical patterns</li>
+      <li><strong>Intraday Updates:</strong> Update schedules 2-3 times daily before gate closure</li>
+      <li><strong>Storage Integration:</strong> Use ESS to buffer variance (±3-5% achievable)</li>
+      <li><strong>Benchmarking:</strong> Compare forecasting accuracy against IEX/PXIL standards (typically 85%+ MAPE)</li>
+      <li><strong>Penalty Analysis:</strong> Monthly review of deviation root causes (weather, equipment, scheduling)</li>
+    </ul>
+  `;
+  
+  $('forecastRecommendations').innerHTML = html;
+}
+
+function toggleRiskDetails(type) {
+  alert(`${type.toUpperCase()} Band Analysis:\n\n2024: ±15%\n2026: ±10% (tighten by 5%)\n2031: ±5% (align with general sellers)\n\nAction: Review high-variance slots in monthly reports.`);
+}
+
+function buildTabSummaries(){
+  const under = resultRows.filter(r => r.Type === 'Under');
+  const over  = resultRows.filter(r => r.Type === 'Over');
+
+  const agg = rows => ({
+    slots: rows.length,
+    sch: rows.reduce((s,r) => s + (r.Scheduled||0), 0),
+    act: rows.reduce((s,r) => s + (r.Actual||0), 0),
+    dsm: rows.reduce((s,r) => s + (r.DSM||0), 0),
+    atRR: rows.reduce((s,r) => s + (r.Amount_at_RR||0), 0),
+    aboveRR: rows.reduce((s,r) => s + (r.Amount_above_RR||0), 0),
+    rows: rows
+  });
+
+  const ua = agg(under);
+  const oa = agg(over);
+
+  if($('u_slots')) $('u_slots').innerText = ua.slots;
+  if($('u_sch')) $('u_sch').innerText = ua.sch.toFixed(3);
+  if($('u_act')) $('u_act').innerText = ua.act.toFixed(3);
+  const u_sign = ua.dsm < 0 ? '-' : '';
+  if($('u_dsm')) $('u_dsm').innerText = u_sign + '₹' + Math.abs(ua.dsm).toFixed(2);
+  if($('u_atrr')) $('u_atrr').innerText = '₹' + ua.atRR.toFixed(2);
+  if($('u_aboverr')) $('u_aboverr').innerText = '₹' + ua.aboveRR.toFixed(2);
+
+  if($('o_slots')) $('o_slots').innerText = oa.slots;
+  if($('o_sch')) $('o_sch').innerText = oa.sch.toFixed(3);
+  if($('o_act')) $('o_act').innerText = oa.act.toFixed(3);
+  if($('o_dsm')) $('o_dsm').innerText = '₹' + Math.abs(oa.dsm).toFixed(2);
+  if($('o_atrr')) $('o_atrr').innerText = '₹' + oa.atRR.toFixed(2);
+  if($('o_aboverr')) $('o_aboverr').innerText = '₹' + oa.aboveRR.toFixed(2);
+
+  buildDaywise(ua.rows, 'under_daywise', 'Under');
+  buildDaywise(oa.rows, 'over_daywise', 'Over');
+  buildSlabTable(ua.rows, 'under_slab', true);
+  buildSlabTable(oa.rows, 'over_slab', false);
+
+  buildPenaltyBreakdown(ua.rows);
+  buildSummaryOfTrades();
+
+  const under15 = resultRows.filter(r => r.Type === 'Under' && Math.abs(r.Dev) > 15);
+  const u15_agg = {
+    slots: under15.length,
+    sch: under15.reduce((s,r) => s + (r.Scheduled||0), 0),
+    act: under15.reduce((s,r) => s + (r.Actual||0), 0),
+    dsm: under15.reduce((s,r) => s + (r.DSM||0), 0),
+    atRR: under15.reduce((s,r) => s + (r.Amount_at_RR||0), 0),
+    aboveRR: under15.reduce((s,r) => s + (r.Amount_above_RR||0), 0)
+  };
+
+  if($('u15_slots')) $('u15_slots').innerText = u15_agg.slots;
+  if($('u15_sch')) $('u15_sch').innerText = u15_agg.sch.toFixed(3);
+  if($('u15_act')) $('u15_act').innerText = u15_agg.act.toFixed(3);
+  const u15_sign = u15_agg.dsm < 0 ? '-' : '';
+  if($('u15_dsm')) $('u15_dsm').innerText = u15_sign + '₹' + Math.abs(u15_agg.dsm).toFixed(2);
+  if($('u15_atrr')) $('u15_atrr').innerText = '₹' + u15_agg.atRR.toFixed(2);
+  if($('u15_aboverr')) $('u15_aboverr').innerText = '₹' + u15_agg.aboveRR.toFixed(2);
+  renderUnder15(under15);
+}
+
+function buildDaywise(rows, tbodyId, type){
+  const daywise = {};
+  rows.forEach(r => {
+    if(!daywise[r.Date]) {
+      daywise[r.Date] = {
+        Date: r.Date, sch: 0, act: 0, dev: 0, dsm: 0, slots: 0, acs: []
+      };
+    }
+    daywise[r.Date].sch += r.Scheduled;
+    daywise[r.Date].act += r.Actual;
+    daywise[r.Date].dev += (r.Actual - r.Scheduled);
+    daywise[r.Date].dsm += r.DSM;
+    daywise[r.Date].slots++;
+    daywise[r.Date].acs.push(r.AvCap);
+  });
+
+  const tbody = $(tbodyId);
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  
+  Object.values(daywise).forEach(d => {
+    const totalAC = d.acs.reduce((a,b) => a+b, 0);
+    const devPct = totalAC > 0 ? (d.dev / totalAC) * 100 : 0;
+    const status = d.dsm < 0 ? 'Receivable' : 'Payable';
+    const sign = d.dsm < 0 ? '-' : '';
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${d.Date}</td>
+      <td>${d.sch.toFixed(3)}</td>
+      <td>${d.act.toFixed(3)}</td>
+      <td>${d.dev.toFixed(3)}</td>
+      <td>${devPct.toFixed(2)}%</td>
+      <td ${d.dsm < 0 ? 'class="sign-negative"' : ''}>${sign}₹${Math.abs(d.dsm).toFixed(2)}</td>
+      <td>${status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function buildSlabTable(rows, tbodyId, isUnder){
+  const slabs = {
+    s1: {label:'Up to 10%', slots:0, sch:0, act:0, dsm:0, penalty:0, loss:0, slotSet: new Set()},
+    s2: {label:'10%–15%', slots:0, sch:0, act:0, dsm:0, penalty:0, loss:0, slotSet: new Set()},
+    s3: {label:'More than 15%', slots:0, sch:0, act:0, dsm:0, penalty:0, loss:0, slotSet: new Set()}
+  };
+  
+  rows.forEach(r => {
+    const dev = Math.abs(r.Dev || 0);
+    
+    if(isUnder) {
+      if(dev > 0) {
+        slabs.s1.sch += r.Scheduled || 0;
+        slabs.s1.act += r.Actual || 0;
+        slabs.s1.dsm += (r.slab1_paid || 0);
+        slabs.s1.slotSet.add(r.Date + ' ' + r.Slot);
+      }
+      
+      if(dev > 10) {
+        slabs.s2.sch += r.Scheduled || 0;
+        slabs.s2.act += r.Actual || 0;
+        slabs.s2.dsm += (r.slab2_paid || 0);
+        slabs.s2.penalty += (r.slab2_penalty || 0);
+        slabs.s2.slotSet.add(r.Date + ' ' + r.Slot);
+      }
+      
+      if(dev > 15) {
+        slabs.s3.sch += r.Scheduled || 0;
+        slabs.s3.act += r.Actual || 0;
+        
+        // CHANGE STARTS HERE
+        // Using Math.abs(r.DSM) because r.DSM is negative for Under Drawal.
+        // We want the "Receivable" amount to be positive.
+        slabs.s3.dsm += Math.abs(r.DSM || 0); 
+        // CHANGE ENDS HERE
+        
+        slabs.s3.penalty += (r.slab2_penalty || 0);
+        slabs.s3.loss += (r.slab3_loss || 0);
+        slabs.s3.slotSet.add(r.Date + ' ' + r.Slot);
+      }
+    } else {
+      const al = [0, 0, 0];
+      const dev_abs = Math.abs(dev);
+      al[0] = Math.min(dev_abs, 10);
+      al[1] = Math.max(0, Math.min(dev_abs - 10, 5));
+      al[2] = Math.max(0, dev_abs - 15);
+      
+      if(al[0] > 0) {
+        slabs.s1.sch += r.Scheduled || 0;
+        slabs.s1.act += r.Actual || 0;
+        slabs.s1.dsm += ((al[0]/100) * r.AvCap * r.Rate * 10);
+        slabs.s1.slotSet.add(r.Date + ' ' + r.Slot);
+      }
+      if(al[1] > 0) {
+        slabs.s2.sch += r.Scheduled || 0;
+        slabs.s2.act += r.Actual || 0;
+        slabs.s2.dsm += ((al[1]/100) * r.AvCap * r.Rate * 10 * 1.1);
+        slabs.s2.penalty += ((al[1]/100) * r.AvCap * r.Rate * 10 * 0.1);
+        slabs.s2.slotSet.add(r.Date + ' ' + r.Slot);
+      }
+      if(al[2] > 0) {
+        slabs.s3.sch += r.Scheduled || 0;
+        slabs.s3.act += r.Actual || 0;
+        slabs.s3.dsm += ((al[2]/100) * r.AvCap * r.Rate * 10 * 2);
+        slabs.s3.loss += ((al[2]/100) * r.AvCap * r.Rate * 10 * 1);
+        slabs.s3.slotSet.add(r.Date + ' ' + r.Slot);
+      }
+    }
+  });
+  
+  slabs.s1.slots = slabs.s1.slotSet.size;
+  slabs.s2.slots = slabs.s2.slotSet.size;
+  slabs.s3.slots = slabs.s3.slotSet.size;
+
+  const tbody = $(tbodyId);
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  
+  Object.values(slabs).forEach(s => {
+    const sign = s.dsm < 0 ? '-' : '';
+    const absVal = Math.abs(s.dsm);
+    const penaltyDisplay = s.penalty > 0 ? `₹${s.penalty.toFixed(2)} ${isUnder ? '(10% sf)' : '(1.1x)'}` : '₹0';
+    const lossDisplay = s.loss > 0 ? `₹${s.loss.toFixed(2)} ${isUnder ? '(100%)' : '(2x)'}` : '₹0';
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${s.label}</td>
+      <td>${s.slots}</td>
+      <td>${s.sch.toFixed(3)}</td>
+      <td>${s.act.toFixed(3)}</td>
+      <td ${s.dsm < 0 ? 'class="sign-negative"' : ''}>${sign}₹${absVal.toFixed(2)}</td>
+      <td>${penaltyDisplay}</td>
+      <td>${lossDisplay}</td>
+      <td><button onclick="drillSlab('${s.label}')">View Slots</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function drillSlab(label){
+  const underVisible = $('tab-under').style.display !== 'none';
+  let rows = resultRows.filter(r => underVisible ? r.Type === 'Under' : r.Type === 'Over');
+  rows = rows.filter(r => {
+    const d = Math.abs(r.Dev || 0);
+    return label === 'Up to 10%' ? d <= 10 : (label === '10%–15%' ? d > 10 && d <= 15 : d > 15);
+  });
+  render(rows);
+  document.querySelector('h3:nth-of-type(3)').scrollIntoView({ behavior: 'smooth' });
+}
+
+function render(rows){
+  const tbody = $('slotBody');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  if(!rows || rows.length === 0){
+    tbody.innerHTML = '<tr><td colspan="12" style="padding:12px;color:#666">No slots to display.</td></tr>';
+    return;
+  }
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    if(r.Type === 'Under') {
+      const sign = r.Amount_at_RR < 0 ? '-' : '';
+      tr.innerHTML = `
+        <td>${r.Date}</td><td>${r.Slot}</td><td>${r.Scheduled.toFixed(3)}</td><td>${r.Actual.toFixed(3)}</td>
+        <td>${r.AvCap.toFixed(2)}</td><td>${r.Dev.toFixed(2)}%</td><td>${r.Type}</td>
+        <td>₹${r.slab1_paid.toFixed(0)}</td><td>₹${r.slab2_paid.toFixed(0)}</td><td>₹${r.slab2_penalty.toFixed(0)}</td>
+        <td>₹${r.slab3_loss.toFixed(0)}</td><td ${r.Amount_at_RR < 0 ? 'class="sign-negative"' : ''}>${sign}₹${Math.abs(r.Amount_at_RR).toFixed(2)}</td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td>${r.Date}</td><td>${r.Slot}</td><td>${r.Scheduled.toFixed(3)}</td><td>${r.Actual.toFixed(3)}</td>
+        <td>${r.AvCap.toFixed(2)}</td><td>${r.Dev.toFixed(2)}%</td><td>${r.Type}</td>
+        <td>₹${(r.Amount_at_RR || 0).toFixed(0)}</td><td>₹${((r.Amount_above_RR || 0) * 0.1).toFixed(0)}</td><td>₹0</td>
+        <td>₹${((r.Amount_above_RR || 0) * 2).toFixed(0)}</td><td class="sign-positive">₹${Math.abs(r.DSM).toFixed(2)}</td>
+      `;
+    }
+    tbody.appendChild(tr);
+  });
+}
+
+function renderUnder15(rows){
+  const tbody = $('slotBody15');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  if(!rows || rows.length === 0){
+    tbody.innerHTML = '<tr><td colspan="10" style="padding:12px;color:#666">No Under Drawal slots with variance >15%.</td></tr>';
+    return;
+  }
+  rows.forEach(r => {
+    const sign = r.DSM < 0 ? '-' : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.Date}</td><td>${r.Slot}</td><td>${r.Scheduled}</td><td>${r.Actual}</td><td>${r.AvCap}</td>
+      <td>${r.Dev.toFixed(2)}</td><td>${r.Type}</td><td ${r.DSM < 0 ? 'class="sign-negative"' : ''}>${sign}₹${Math.abs(r.DSM).toFixed(2)}</td>
+      <td>₹${r.Amount_at_RR.toFixed(2)}</td><td>₹${r.Amount_above_RR.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
+  const el = $(id);
+  if(el) el.style.display = 'block';
+}
+
+function saveMapping() {
+  const mapping = {
+    date: $('mapDate').value,
+    slot: $('mapSlot').value,
+    sch: $('mapSch').value,
+    act: $('mapAct').value,
+    ac: $('mapAC').value,
+    rate: $('mapRate').value
+  };
+  localStorage.setItem('excelMapping', JSON.stringify(mapping));
+  alert('✅ Mapping saved to browser!');
+}
+
+function loadMapping() {
+  const mapping = JSON.parse(localStorage.getItem('excelMapping') || '{}');
+  if (mapping.date) {
+    $('mapDate').value = mapping.date;
+    $('mapSlot').value = mapping.slot;
+    $('mapSch').value = mapping.sch;
+    $('mapAct').value = mapping.act;
+    $('mapAC').value = mapping.ac;
+    $('mapRate').value = mapping.rate;
+    alert('✅ Mapping loaded from browser!');
+  } else {
+    alert('❌ No saved mapping found.');
+  }
+}
+
+function resetMapping() {
+  localStorage.removeItem('excelMapping');
+  alert('🔄 Mapping reset!');
+}
+
+function exportReport(){
+  if(typeof XLSX === 'undefined'){ 
+    alert('XLSX library not available.'); 
+    return; 
+  }
+  if(!resultRows || resultRows.length === 0){ 
+    alert('No results to export'); 
+    return; 
+  }
+
+  const wb = XLSX.utils.book_new();
+  const under = resultRows.filter(r => r.Type === 'Under');
+  const over  = resultRows.filter(r => r.Type === 'Over');
+
+  const underS1 = under.filter(r => Math.abs(r.Dev) <= 10);
+  const underS2 = under.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+  const underS3 = under.filter(r => Math.abs(r.Dev) > 15);
+  
+  const underSlabSummary = [];
+  if (underS1.length > 0) {
+    underSlabSummary.push({
+      Slab: 'Slab 1: Up to 10%',
+      Slots: underS1.length,
+      Scheduled_MWh: sumCol(underS1, 'Scheduled'),
+      Actual_MWh: sumCol(underS1, 'Actual'),
+      Entitled_Rs: sumCol(underS1, 'slab1_entitled'),
+      Paid_at_100pct_Rs: sumCol(underS1, 'slab1_paid'),
+      Penalty_Rs: 0,
+      Loss_Rs: 0
+    });
+  }
+  if (underS2.length > 0) {
+    underSlabSummary.push({
+      Slab: 'Slab 2: 10% to 15%',
+      Slots: underS2.length,
+      Scheduled_MWh: sumCol(underS2, 'Scheduled'),
+      Actual_MWh: sumCol(underS2, 'Actual'),
+      Entitled_Rs: sumCol(underS2, 'slab2_entitled'),
+      Paid_at_90pct_Rs: sumCol(underS2, 'slab2_paid'),
+      Penalty_10pct_Rs: sumCol(underS2, 'slab2_penalty'),
+      Loss_Rs: 0
+    });
+  }
+  if (underS3.length > 0) {
+    underSlabSummary.push({
+      Slab: 'Slab 3: More than 15%',
+      Slots: underS3.length,
+      Scheduled_MWh: sumCol(underS3, 'Scheduled'),
+      Actual_MWh: sumCol(underS3, 'Actual'),
+      Entitled_Rs: sumCol(underS3, 'slab3_entitled'),
+      Paid_at_0pct_Rs: 0,
+      Penalty_Rs: 0,
+      Loss_100pct_Rs: sumCol(underS3, 'slab3_loss')
+    });
+  }
+
+  const overS1 = over.filter(r => Math.abs(r.Dev) <= 10);
+  const overS2 = over.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+  const overS3 = over.filter(r => Math.abs(r.Dev) > 15);
+  
+  const overSlabSummary = [];
+  if (overS1.length > 0) {
+    overSlabSummary.push({
+      Slab: 'Slab 1: Up to 10%',
+      Slots: overS1.length,
+      Scheduled_MWh: sumCol(overS1, 'Scheduled'),
+      Actual_MWh: sumCol(overS1, 'Actual'),
+      Entitled_Rs: sumCol(overS1, 'slab1_entitled'),
+      Paid_at_100pct_Rs: sumCol(overS1, 'slab1_paid'),
+      Surcharge_Rs: 0
+    });
+  }
+  if (overS2.length > 0) {
+    overSlabSummary.push({
+      Slab: 'Slab 2: 10% to 15%',
+      Slots: overS2.length,
+      Scheduled_MWh: sumCol(overS2, 'Scheduled'),
+      Actual_MWh: sumCol(overS2, 'Actual'),
+      Entitled_Rs: sumCol(overS2, 'slab2_entitled'),
+      Paid_at_110pct_Rs: sumCol(overS2, 'slab2_paid'),
+      Surcharge_10pct_Rs: sumCol(overS2, 'slab2_penalty')
+    });
+  }
+  if (overS3.length > 0) {
+    overSlabSummary.push({
+      Slab: 'Slab 3: More than 15%',
+      Slots: overS3.length,
+      Scheduled_MWh: sumCol(overS3, 'Scheduled'),
+      Actual_MWh: sumCol(overS3, 'Actual'),
+      Entitled_Rs: sumCol(overS3, 'slab3_entitled'),
+      Paid_at_200pct_Rs: sumCol(overS3, 'slab3_paid'),
+      Surcharge_100pct_Rs: sumCol(overS3, 'slab3_loss')
+    });
+  }
+
+  const daywise = {};
+  resultRows.forEach(r => {
+    if(!daywise[r.Date]) {
+      daywise[r.Date] = {
+        Date: r.Date, Scheduled: 0, Actual: 0, Deviation: 0, DSM: 0,
+        Slab1Paid: 0, Slab2Paid: 0, Slab2Penalty: 0, Slab3Loss: 0
+      };
+    }
+    daywise[r.Date].Scheduled += r.Scheduled;
+    daywise[r.Date].Actual += r.Actual;
+    daywise[r.Date].Deviation += (r.Actual - r.Scheduled);
+    daywise[r.Date].DSM += r.DSM;
+    daywise[r.Date].Slab1Paid += r.slab1_paid || 0;
+    daywise[r.Date].Slab2Paid += r.slab2_paid || 0;
+    daywise[r.Date].Slab2Penalty += r.slab2_penalty || 0;
+    daywise[r.Date].Slab3Loss += r.slab3_loss || 0;
+  });
+
+  const summary = [
+    {
+      Type: 'UNDER DRAWAL',
+      Total_Slots: under.length,
+      Scheduled_MWh: sumCol(under, 'Scheduled'),
+      Actual_MWh: sumCol(under, 'Actual'),
+      Slab1_Slots: underS1.length,
+      Slab1_Entitled: sumCol(underS1, 'slab1_entitled'),
+      Slab1_Paid: sumCol(underS1, 'slab1_paid'),
+      Slab2_Slots: underS2.length,
+      Slab2_Entitled: sumCol(underS2, 'slab2_entitled'),
+      Slab2_Paid: sumCol(underS2, 'slab2_paid'),
+      Slab2_Penalty_10pct: sumCol(underS2, 'slab2_penalty'),
+      Slab3_Slots: underS3.length,
+      Slab3_Entitled: sumCol(underS3, 'slab3_entitled'),
+      Slab3_Loss_100pct: sumCol(underS3, 'slab3_loss'),
+      Total_Receivable_at_RR: sumCol(under, 'Amount_at_RR')
+    },
+    {
+      Type: 'OVER DRAWAL',
+      Total_Slots: over.length,
+      Scheduled_MWh: sumCol(over, 'Scheduled'),
+      Actual_MWh: sumCol(over, 'Actual'),
+      Slab1_Slots: overS1.length,
+      Slab1_Entitled: sumCol(overS1, 'slab1_entitled'),
+      Slab1_Paid: sumCol(overS1, 'slab1_paid'),
+      Slab2_Slots: overS2.length,
+      Slab2_Entitled: sumCol(overS2, 'slab2_entitled'),
+      Slab2_Paid: sumCol(overS2, 'slab2_paid'),
+      Slab2_Surcharge_1_1x: sumCol(overS2, 'slab2_penalty'),
+      Slab3_Slots: overS3.length,
+      Slab3_Entitled: sumCol(overS3, 'slab3_entitled'),
+      Slab3_Surcharge_2x: sumCol(overS3, 'slab3_loss'),
+      Total_Payable_at_RR: sumCol(over, 'Amount_at_RR')
+    }
+  ];
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(underSlabSummary), 'Under_Slab_Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(overSlabSummary), 'Over_Slab_Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(daywise)), 'Day_Wise');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(under), 'Short_Drawal');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(over), 'Over_Drawal');
+  
+  XLSX.writeFile(wb, 'DSM_Detailed_Report.xlsx');
+}
+
+function sumCol(arr, key){ return arr.reduce((s,r) => s + (r[key] || 0), 0); }
+
+function exportAllReports(){
+  if(typeof XLSX === 'undefined'){ 
+    alert('XLSX library not available.'); 
+    return; 
+  }
+  if(!resultRows || resultRows.length === 0){ 
+    alert('No results to export'); 
+    return; 
+  }
+
+  const wb = XLSX.utils.book_new();
+  const under = resultRows.filter(r => r.Type === 'Under');
+  const over  = resultRows.filter(r => r.Type === 'Over');
+
+  const underS1 = under.filter(r => Math.abs(r.Dev) <= 10);
+  const underS2 = under.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+  const underS3 = under.filter(r => Math.abs(r.Dev) > 15);
+  
+  const overS1 = over.filter(r => Math.abs(r.Dev) <= 10);
+  const overS2 = over.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+  const overS3 = over.filter(r => Math.abs(r.Dev) > 15);
+
+  const execSummary = [{
+    Report_Name: 'DSM Calculation - All Trades',
+    Generated: new Date().toLocaleString('en-IN'),
+    Total_Slots: resultRows.length,
+    Under_Drawal_Slots: under.length,
+    Over_Drawal_Slots: over.length,
+    Total_Scheduled_MWh: sumCol(resultRows, 'Scheduled'),
+    Total_Actual_MWh: sumCol(resultRows, 'Actual'),
+    Total_DSM_Payable_Rs: sumCol(over, 'DSM'),
+    Total_DSM_Receivable_Rs: Math.abs(sumCol(under, 'DSM')),
+    Net_Settlement_Rs: sumCol(over, 'DSM') + sumCol(under, 'DSM')
+  }];
+
+  const exceptionSummary = [
+    {
+      Exception_Type: 'Under >10% (Slab 2)',
+      Total_Slots: underS2.length,
+      Scheduled_MWh: sumCol(underS2, 'Scheduled'),
+      Actual_MWh: sumCol(underS2, 'Actual'),
+      Entitled_Rs: sumCol(underS2, 'slab2_entitled'),
+      Paid_at_90pct_Rs: sumCol(underS2, 'slab2_paid'),
+      Penalty_10pct_Rs: sumCol(underS2, 'slab2_penalty'),
+      Status: 'Medium Risk'
+    },
+    {
+      Exception_Type: 'Under >15% (Slab 3)',
+      Total_Slots: underS3.length,
+      Scheduled_MWh: sumCol(underS3, 'Scheduled'),
+      Actual_MWh: sumCol(underS3, 'Actual'),
+      Entitled_Rs: sumCol(underS3, 'slab3_entitled'),
+      Paid_at_0pct_Rs: 0,
+      Loss_100pct_Rs: sumCol(underS3, 'slab3_loss'),
+      Status: 'HIGH RISK'
+    },
+    {
+      Exception_Type: 'Over >15% (Slab 3)',
+      Total_Slots: overS3.length,
+      Scheduled_MWh: sumCol(overS3, 'Scheduled'),
+      Actual_MWh: sumCol(overS3, 'Actual'),
+      Entitled_Rs: sumCol(overS3, 'slab3_entitled'),
+      Paid_at_200pct_Rs: sumCol(overS3, 'slab3_paid'),
+      Surcharge_100pct_Rs: sumCol(overS3, 'slab3_loss'),
+      Status: 'Compliance Alert'
+    }
+  ];
+
+  const underDrawalSummary = [
+    {
+      Slab: 'Slab 1: Up to 10%',
+      Slots: underS1.length,
+      Scheduled_MWh: sumCol(underS1, 'Scheduled'),
+      Actual_MWh: sumCol(underS1, 'Actual'),
+      Entitled_Rs: sumCol(underS1, 'slab1_entitled'),
+      Paid_at_100pct_Rs: sumCol(underS1, 'slab1_paid'),
+      Penalty_Rs: 0
+    },
+    {
+      Slab: 'Slab 2: 10% to 15%',
+      Slots: underS2.length,
+      Scheduled_MWh: sumCol(underS2, 'Scheduled'),
+      Actual_MWh: sumCol(underS2, 'Actual'),
+      Entitled_Rs: sumCol(underS2, 'slab2_entitled'),
+      Paid_at_90pct_Rs: sumCol(underS2, 'slab2_paid'),
+      Penalty_10pct_Rs: sumCol(underS2, 'slab2_penalty')
+    },
+    {
+      Slab: 'Slab 3: More than 15%',
+      Slots: underS3.length,
+      Scheduled_MWh: sumCol(underS3, 'Scheduled'),
+      Actual_MWh: sumCol(underS3, 'Actual'),
+      Entitled_Rs: sumCol(underS3, 'slab3_entitled'),
+      Paid_at_0pct_Rs: 0,
+      Loss_100pct_Rs: sumCol(underS3, 'slab3_loss')
+    }
+  ];
+
+  const overDrawalSummary = [
+    {
+      Slab: 'Slab 1: Up to 10%',
+      Slots: overS1.length,
+      Scheduled_MWh: sumCol(overS1, 'Scheduled'),
+      Actual_MWh: sumCol(overS1, 'Actual'),
+      Entitled_Rs: sumCol(overS1, 'slab1_entitled'),
+      Paid_at_100pct_Rs: sumCol(overS1, 'slab1_paid'),
+      Surcharge_Rs: 0
+    },
+    {
+      Slab: 'Slab 2: 10% to 15%',
+      Slots: overS2.length,
+      Scheduled_MWh: sumCol(overS2, 'Scheduled'),
+      Actual_MWh: sumCol(overS2, 'Actual'),
+      Entitled_Rs: sumCol(overS2, 'slab2_entitled'),
+      Paid_at_110pct_Rs: sumCol(overS2, 'slab2_paid'),
+      Surcharge_10pct_Rs: sumCol(overS2, 'slab2_penalty')
+    },
+    {
+      Slab: 'Slab 3: More than 15%',
+      Slots: overS3.length,
+      Scheduled_MWh: sumCol(overS3, 'Scheduled'),
+      Actual_MWh: sumCol(overS3, 'Actual'),
+      Entitled_Rs: sumCol(overS3, 'slab3_entitled'),
+      Paid_at_200pct_Rs: sumCol(overS3, 'slab3_paid'),
+      Surcharge_100pct_Rs: sumCol(overS3, 'slab3_loss')
+    }
+  ];
+
+  const daywise = {};
+  resultRows.forEach(r => {
+    if(!daywise[r.Date]) {
+      daywise[r.Date] = {
+        Date: r.Date, Scheduled: 0, Actual: 0, Deviation: 0, DSM: 0,
+        Slab1Paid: 0, Slab2Paid: 0, Slab2Penalty: 0, Slab3Loss: 0, Type_Count: 0
+      };
+    }
+    daywise[r.Date].Scheduled += r.Scheduled;
+    daywise[r.Date].Actual += r.Actual;
+    daywise[r.Date].Deviation += (r.Actual - r.Scheduled);
+    daywise[r.Date].DSM += r.DSM;
+    daywise[r.Date].Slab1Paid += r.slab1_paid || 0;
+    daywise[r.Date].Slab2Paid += r.slab2_paid || 0;
+    daywise[r.Date].Slab2Penalty += r.slab2_penalty || 0;
+    daywise[r.Date].Slab3Loss += r.slab3_loss || 0;
+  });
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(execSummary), 'Executive_Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exceptionSummary), 'Exception_Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(underDrawalSummary), 'Under_Slab_Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(overDrawalSummary), 'Over_Slab_Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.values(daywise)), 'Day_Wise_Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(underS2), 'Under_Slab2_Details');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(underS3), 'Under_Slab3_Details');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(overS3), 'Over_Slab3_Details');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(under), 'All_Under_Drawal');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(over), 'All_Over_Drawal');
+  
+  XLSX.writeFile(wb, `DSM_All_Reports_${new Date().toISOString().slice(0,10)}.xlsx`);
+  alert('✅ All Reports (Excel) exported successfully!\n\n10 Sheets included:\n- Executive Summary\n- Exception Summary\n- Slab Summaries (Under/Over)\n- Day-Wise Summary\n- Exception Details (Slab 2, 3)\n- Full Slot Details');
+}
+
+function exportReportPDF(){
+  if(!resultRows || resultRows.length === 0){ 
+    alert('No results to export'); 
+    return; 
+  }
+
+  const loadingDiv = document.createElement('div');
+  loadingDiv.innerHTML = '<div style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; padding:20px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); z-index:9999;">📄 Generating PDF Report...<br><small style="color:#666;">This may take a few seconds</small></div>';
+  document.body.appendChild(loadingDiv);
+
+  setTimeout(() => {
+    try {
+      const under = resultRows.filter(r => r.Type === 'Under');
+      const over  = resultRows.filter(r => r.Type === 'Over');
+
+      const underS1 = under.filter(r => Math.abs(r.Dev) <= 10);
+      const underS2 = under.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+      const underS3 = under.filter(r => Math.abs(r.Dev) > 15);
+      
+      const overS1 = over.filter(r => Math.abs(r.Dev) <= 10);
+      const overS2 = over.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+      const overS3 = over.filter(r => Math.abs(r.Dev) > 15);
+
+      // Pre-calculate all values BEFORE creating HTML
+      const totalSlots = resultRows.length;
+      const totalScheduled = sumCol(resultRows, 'Scheduled');
+      const totalActual = sumCol(resultRows, 'Actual');
+      const netSettlement = sumCol(over, 'DSM') + sumCol(under, 'DSM');
+      const underCount = under.length;
+      const overCount = over.length;
+      const underDSM = Math.abs(sumCol(under, 'DSM'));
+      const overDSM = sumCol(over, 'DSM');
+      
+      const underS2Count = underS2.length;
+      const underS2Scheduled = sumCol(underS2, 'Scheduled');
+      const underS2Actual = sumCol(underS2, 'Actual');
+      const underS2Penalty = sumCol(underS2, 'slab2_penalty');
+      
+      const underS3Count = underS3.length;
+      const underS3Scheduled = sumCol(underS3, 'Scheduled');
+      const underS3Actual = sumCol(underS3, 'Actual');
+      const underS3Loss = sumCol(underS3, 'slab3_loss');
+      
+      const overS3Count = overS3.length;
+      const overS3Scheduled = sumCol(overS3, 'Scheduled');
+      const overS3Actual = sumCol(overS3, 'Actual');
+      const overS3Loss = sumCol(overS3, 'slab3_loss');
+      
+      const totalException = underS2Penalty + underS3Loss + overS3Loss;
+
+      let pdfContent = `
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
+          .page-break { page-break-after: always; }
+          .header { background: #0b5ed7; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+          .section { margin: 30px 0; padding: 15px; border-left: 4px solid #0b5ed7; background: #f9f9f9; }
+          .exception-section { border-left-color: #dc3545; background: #ffe6e6; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 11px; }
+          th { background: #0b5ed7; color: white; padding: 8px; text-align: left; }
+          td { border: 1px solid #ddd; padding: 6px; }
+          tr:nth-child(even) { background: #f5f5f5; }
+          .risk-high { color: #d9534f; font-weight: bold; }
+          .risk-medium { color: #ff9800; font-weight: bold; }
+          .total-row { background: #e8f4f8; font-weight: bold; }
+          h1 { color: #0b5ed7; margin-top: 0; }
+          h2 { color: #0b5ed7; border-bottom: 2px solid #0b5ed7; padding-bottom: 5px; }
+          .summary-card { display: inline-block; width: 23%; margin: 1%; padding: 10px; background: #f0f0f0; border-radius: 4px; text-align: center; }
+          .summary-card h4 { margin: 5px 0; }
+          .summary-card p { margin: 5px 0; font-size: 14px; font-weight: bold; }
+        </style>
+
+        <div class="header">
+          <h1>DSM Calculation Report</h1>
+          <p><strong>Regulation 8(4), CERC 2024 - WS Seller</strong></p>
+          <p>Generated: ${new Date().toLocaleString('en-IN')}</p>
+        </div>
+
+        <!-- EXECUTIVE SUMMARY -->
+        <div class="section">
+          <h2>📊 Executive Summary</h2>
+          <table>
+            <tr>
+              <th>Metric</th>
+              <th>Value</th>
+            </tr>
+            <tr>
+              <td>Total Slots</td>
+              <td>${totalSlots}</td>
+            </tr>
+            <tr>
+              <td>Total Scheduled (MWh)</td>
+              <td>${totalScheduled.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Total Actual (MWh)</td>
+              <td>${totalActual.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Net Settlement (₹)</td>
+              <td>${netSettlement.toFixed(2)}</td>
+            </tr>
+            <tr class="total-row">
+              <td>Under Drawal Slots</td>
+              <td>${underCount}</td>
+            </tr>
+            <tr class="total-row">
+              <td>Over Drawal Slots</td>
+              <td>${overCount}</td>
+            </tr>
+            <tr>
+              <td><strong>DSM Receivable (Under)</strong></td>
+              <td class="risk-high">₹${underDSM.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td><strong>DSM Payable (Over)</strong></td>
+              <td class="risk-medium">₹${overDSM.toFixed(2)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- EXCEPTION SUMMARY (HIGH RISK) -->
+        <div class="section exception-section">
+          <h2>🚨 EXCEPTION SUMMARY - ALL HIGH-RISK SCENARIOS</h2>
+          
+          <table>
+            <tr>
+              <th>Exception Type</th>
+              <th>Slots</th>
+              <th>Scheduled (MWh)</th>
+              <th>Actual (MWh)</th>
+              <th>Amount (₹)</th>
+              <th>Risk Level</th>
+            </tr>
+            <tr>
+              <td>Under >10% (Slab 2)</td>
+              <td>${underS2Count}</td>
+              <td>${underS2Scheduled.toFixed(2)}</td>
+              <td>${underS2Actual.toFixed(2)}</td>
+              <td>₹${underS2Penalty.toFixed(2)}</td>
+              <td class="risk-medium">Medium</td>
+            </tr>
+            <tr>
+              <td>Under >15% (Slab 3) 🔴 CRITICAL</td>
+              <td>${underS3Count}</td>
+              <td>${underS3Scheduled.toFixed(2)}</td>
+              <td>${underS3Actual.toFixed(2)}</td>
+              <td class="risk-high">₹${underS3Loss.toFixed(2)}</td>
+              <td class="risk-high">HIGH</td>
+            </tr>
+            <tr>
+              <td>Over >15% (Slab 3)</td>
+              <td>${overS3Count}</td>
+              <td>${overS3Scheduled.toFixed(2)}</td>
+              <td>${overS3Actual.toFixed(2)}</td>
+              <td>₹${overS3Loss.toFixed(2)}</td>
+              <td class="risk-medium">Compliance Alert</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="4"><strong>Total Exception Slots</strong></td>
+              <td colspan="2" class="risk-high"><strong>₹${totalException.toFixed(2)}</strong></td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="page-break"></div>
+
+        <!-- SLAB 2 DETAILS (UNDER) -->
+        <div class="section">
+          <h2>📋 SLAB 2 DETAILS (10-15% Variance) - UNDER DRAWAL</h2>
+          <p><strong>${underS2Count} slots</strong> with 10-15% variance - Medium Risk</p>
+          
+          <table>
+            <tr>
+              <th>Date</th>
+              <th>Slot</th>
+              <th>Scheduled (MWh)</th>
+              <th>Actual (MWh)</th>
+              <th>Variance %</th>
+              <th>Entitled (₹)</th>
+              <th>Paid @ 90% (₹)</th>
+              <th>Penalty 10% (₹)</th>
+            </tr>
+`;
+      underS2.slice(0, 20).forEach(r => {
+        pdfContent += `
+            <tr>
+              <td>${r.Date}</td>
+              <td>${r.Slot}</td>
+              <td>${r.Scheduled.toFixed(3)}</td>
+              <td>${r.Actual.toFixed(3)}</td>
+              <td>${r.Dev.toFixed(2)}%</td>
+              <td>₹${(r.slab2_entitled || 0).toFixed(2)}</td>
+              <td>₹${(r.slab2_paid || 0).toFixed(2)}</td>
+              <td class="risk-medium">₹${(r.slab2_penalty || 0).toFixed(2)}</td>
+            </tr>
+`;
+      });
+      if(underS2.length > 20) {
+        pdfContent += `<tr><td colspan="8"><em>... and ${underS2.length - 20} more slots. See Excel export for complete details.</em></td></tr>`;
+      }
+      pdfContent += `</table></div>`;
+
+      // SLAB 3 DETAILS (UNDER)
+      pdfContent += `
+        <div class="section exception-section">
+          <h2>⚠️ SLAB 3 DETAILS (>15% Variance) - UNDER DRAWAL</h2>
+          <p><strong>${underS3Count} slots</strong> with >15% variance - CRITICAL RISK</p>
+          
+          <table>
+            <tr>
+              <th>Date</th>
+              <th>Slot</th>
+              <th>Scheduled (MWh)</th>
+              <th>Actual (MWh)</th>
+              <th>Variance %</th>
+              <th>Entitled (₹)</th>
+              <th>Paid (₹)</th>
+              <th>Potential Loss 100% (₹)</th>
+            </tr>
+`;
+      underS3.slice(0, 20).forEach(r => {
+        pdfContent += `
+            <tr>
+              <td>${r.Date}</td>
+              <td>${r.Slot}</td>
+              <td>${r.Scheduled.toFixed(3)}</td>
+              <td>${r.Actual.toFixed(3)}</td>
+              <td>${r.Dev.toFixed(2)}%</td>
+              <td>₹${(r.slab3_entitled || 0).toFixed(2)}</td>
+              <td>₹0.00</td>
+              <td class="risk-high">₹${(r.slab3_loss || 0).toFixed(2)}</td>
+            </tr>
+`;
+      });
+      if(underS3.length > 20) {
+        pdfContent += `<tr><td colspan="8"><em>... and ${underS3.length - 20} more slots. See Excel export for complete details.</em></td></tr>`;
+      }
+      pdfContent += `</table></div>`;
+
+      pdfContent += `<div class="page-break"></div>`;
+
+      // OVER DRAWAL SLAB 3
+      pdfContent += `
+        <div class="section">
+          <h2>📋 SLAB 3 DETAILS (>15% Variance) - OVER DRAWAL</h2>
+          <p><strong>${overS3Count} slots</strong> with >15% variance - Compliance Alert</p>
+          
+          <table>
+            <tr>
+              <th>Date</th>
+              <th>Slot</th>
+              <th>Scheduled (MWh)</th>
+              <th>Actual (MWh)</th>
+              <th>Variance %</th>
+              <th>Entitled (₹)</th>
+              <th>Paid @ 200% (₹)</th>
+              <th>Surcharge 100% (₹)</th>
+            </tr>
+`;
+      overS3.slice(0, 20).forEach(r => {
+        pdfContent += `
+            <tr>
+              <td>${r.Date}</td>
+              <td>${r.Slot}</td>
+              <td>${r.Scheduled.toFixed(3)}</td>
+              <td>${r.Actual.toFixed(3)}</td>
+              <td>${r.Dev.toFixed(2)}%</td>
+              <td>₹${(r.slab3_entitled || 0).toFixed(2)}</td>
+              <td>₹${(r.slab3_paid || 0).toFixed(2)}</td>
+              <td class="risk-medium">₹${(r.slab3_loss || 0).toFixed(2)}</td>
+            </tr>
+`;
+      });
+      if(overS3.length > 20) {
+        pdfContent += `<tr><td colspan="8"><em>... and ${overS3.length - 20} more slots. See Excel export for complete details.</em></td></tr>`;
+      }
+      pdfContent += `</table></div>`;
+
+      pdfContent += `
+        <div class="section">
+          <h2>📌 Notes & Recommendations</h2>
+          <ul>
+            <li><strong>Slab 2 Penalty (10%):</strong> Applied to under-drawal of 10-15%. Seller receives 90% of entitled amount.</li>
+            <li><strong>Slab 3 Loss (100%):</strong> Applied to under-drawal >15%. Seller receives 0% of entitled amount.</li>
+            <li><strong>Over-drawal Surcharge:</strong> Applied @ 1.1x for 10-15%, and 2x for >15% variance.</li>
+            <li><strong>2026 Impact:</strong> Tolerance bands will tighten. Wind: ±10%, Solar: ±5%. Start forecasting improvements now.</li>
+            <li><strong>Action Items:</strong> Review high-variance slots monthly. Implement real-time forecasting and storage integration where feasible.</li>
+          </ul>
+        </div>
+      `;
+
+      const opt = {
+        margin: 10,
+        filename: `DSM_Report_${new Date().toISOString().slice(0,10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+      };
+
+      const element = document.createElement('div');
+      element.innerHTML = pdfContent;
+      html2pdf().set(opt).from(element).save();
+      document.body.removeChild(loadingDiv);
+      alert('✅ PDF Report exported successfully!');
+    } catch(err) {
+      console.error(err);
+      alert('❌ Error generating PDF: ' + err.message);
+      document.body.removeChild(loadingDiv);
+    }
+  }, 500);
+}
+
+function exportSummaryPDF(){
+  if(!resultRows || resultRows.length === 0){ 
+    alert('No results to export'); 
+    return; 
+  }
+
+  const under = resultRows.filter(r => r.Type === 'Under');
+  const over  = resultRows.filter(r => r.Type === 'Over');
+
+  const underS1 = under.filter(r => Math.abs(r.Dev) <= 10);
+  const underS2 = under.filter(r => Math.abs(r.Dev) > 10 && Math.abs(r.Dev) <= 15);
+  const underS3 = under.filter(r => Math.abs(r.Dev) > 15);
+  const overS3 = over.filter(r => Math.abs(r.Dev) > 15);
+
+  // Pre-calculate values
+  const totalSlots = resultRows.length;
+  const totalScheduled = sumCol(resultRows, 'Scheduled');
+  const totalActual = sumCol(resultRows, 'Actual');
+  const netSettlement = sumCol(over, 'DSM') + sumCol(under, 'DSM');
+  const underDSM = Math.abs(sumCol(under, 'DSM'));
+  const overDSM = sumCol(over, 'DSM');
+  const underCount = under.length;
+  const overCount = over.length;
+  const underS2Slots = underS2.length;
+  const underS3Slots = underS3.length;
+  const overS3Slots = overS3.length;
+  const totalPenalty = sumCol(underS2, 'slab2_penalty') + sumCol(underS3, 'slab3_loss') + sumCol(overS3, 'slab3_loss');
+
+  let pdfContent = `
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 15px; color: #333; line-height: 1.4; }
+      .header { background: #0b5ed7; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+      .header h1 { margin: 0 0 5px 0; font-size: 18px; }
+      .header p { margin: 2px 0; font-size: 11px; }
+      
+      .section { margin: 12px 0; padding: 12px; border-left: 4px solid #0b5ed7; background: #f9f9f9; page-break-inside: avoid; }
+      .section h2 { margin: 0 0 10px 0; font-size: 14px; color: #0b5ed7; border-bottom: 2px solid #0b5ed7; padding-bottom: 5px; }
+      .section h3 { margin: 8px 0 6px 0; font-size: 12px; color: #333; }
+      
+      table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; page-break-inside: avoid; }
+      th { background: #0b5ed7; color: white; padding: 6px; text-align: left; font-weight: bold; }
+      td { border: 1px solid #ddd; padding: 5px; }
+      tr:nth-child(even) { background: #f5f5f5; }
+      tr:nth-child(odd) { background: white; }
+      
+      .risk-high { color: #d9534f; font-weight: bold; }
+      .risk-medium { color: #ff9800; font-weight: bold; }
+      .metric-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+      .metric-table td { border: 1px solid #ddd; padding: 10px; text-align: center; background: #e8f4f8; }
+      .metric-label { font-size: 10px; color: #0b5ed7; font-weight: bold; display: block; margin-bottom: 4px; }
+      .metric-value { font-size: 16px; color: #333; font-weight: bold; display: block; }
+      
+      .exception-section { border-left-color: #dc3545; background: #ffe6e6; }
+      .page-break { page-break-before: always; margin-top: 15px; }
+      
+      ul { margin: 8px 0; padding-left: 18px; font-size: 10px; line-height: 1.5; }
+      li { margin: 3px 0; }
+    </style>
+
+    <div class="header">
+      <h1>DSM Summary Report (2-Page)</h1>
+      <p><strong>Regulation 8(4), CERC 2024 - WS Seller</strong></p>
+      <p>Generated: ${new Date().toLocaleString('en-IN')}</p>
+    </div>
+
+    <!-- PAGE 1: SUMMARY METRICS -->
+    <div class="section">
+      <h2>📊 Key Metrics Overview</h2>
+      <table class="metric-table">
+        <tr>
+          <td><span class="metric-label">Total Slots</span><span class="metric-value">${totalSlots}</span></td>
+          <td><span class="metric-label">Under Slots</span><span class="metric-value">${underCount}</span></td>
+          <td><span class="metric-label">Over Slots</span><span class="metric-value">${overCount}</span></td>
+          <td><span class="metric-label">Total Scheduled</span><span class="metric-value">${totalScheduled.toFixed(2)} MWh</span></td>
+        </tr>
+        <tr>
+          <td><span class="metric-label">Total Actual</span><span class="metric-value">${totalActual.toFixed(2)} MWh</span></td>
+          <td><span class="metric-label">DSM Receivable</span><span class="metric-value" style="color:#dc3545;">₹${underDSM.toFixed(2)}</span></td>
+          <td><span class="metric-label">DSM Payable</span><span class="metric-value" style="color:#5cb85c;">₹${overDSM.toFixed(2)}</span></td>
+          <td><span class="metric-label">Net Settlement</span><span class="metric-value">₹${netSettlement.toFixed(2)}</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section exception-section">
+      <h2>🚨 EXCEPTION SUMMARY (High-Risk Slots)</h2>
+      <table>
+        <tr>
+          <th>Exception Type</th>
+          <th>Slots</th>
+          <th>Status</th>
+          <th>Amount (₹)</th>
+        </tr>
+        <tr>
+          <td>Under >10% (Slab 2)</td>
+          <td>${underS2Slots}</td>
+          <td class="risk-medium">Medium Risk</td>
+          <td style="text-align:right;">₹${sumCol(underS2, 'slab2_penalty').toFixed(2)}</td>
+        </tr>
+        <tr style="background:#ffcccc;">
+          <td><strong>Under >15% (Slab 3)</strong></td>
+          <td><strong>${underS3Slots}</strong></td>
+          <td class="risk-high"><strong>CRITICAL</strong></td>
+          <td style="text-align:right;"><strong>₹${sumCol(underS3, 'slab3_loss').toFixed(2)}</strong></td>
+        </tr>
+        <tr>
+          <td>Over >15% (Slab 3)</td>
+          <td>${overS3Slots}</td>
+          <td class="risk-medium">Compliance Alert</td>
+          <td style="text-align:right;">₹${sumCol(overS3, 'slab3_loss').toFixed(2)}</td>
+        </tr>
+        <tr style="background:#d4edff; font-weight:bold;">
+          <td colspan="3"><strong>TOTAL</strong></td>
+          <td style="text-align:right;"><strong>₹${totalPenalty.toFixed(2)}</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>📈 Slab-wise Breakdown</h2>
+      <h3>UNDER DRAWAL SUMMARY</h3>
+      <table>
+        <tr>
+          <th>Slab</th>
+          <th>Slots</th>
+          <th>Entitled (₹)</th>
+          <th>Paid (₹)</th>
+          <th>Loss/Penalty (₹)</th>
+        </tr>
+        <tr>
+          <td>Slab 1: 0-10%</td>
+          <td>${underS1.length}</td>
+          <td>₹${sumCol(underS1, 'slab1_entitled').toFixed(2)}</td>
+          <td>₹${sumCol(underS1, 'slab1_paid').toFixed(2)}</td>
+          <td>₹0.00</td>
+        </tr>
+        <tr>
+          <td>Slab 2: 10-15%</td>
+          <td>${underS2Slots}</td>
+          <td>₹${sumCol(underS2, 'slab2_entitled').toFixed(2)}</td>
+          <td>₹${sumCol(underS2, 'slab2_paid').toFixed(2)}</td>
+          <td class="risk-medium">₹${sumCol(underS2, 'slab2_penalty').toFixed(2)}</td>
+        </tr>
+        <tr style="background:#ffcccc;">
+          <td><strong>Slab 3: >15%</strong></td>
+          <td><strong>${underS3Slots}</strong></td>
+          <td><strong>₹${sumCol(underS3, 'slab3_entitled').toFixed(2)}</strong></td>
+          <td><strong>₹0.00</strong></td>
+          <td class="risk-high"><strong>₹${sumCol(underS3, 'slab3_loss').toFixed(2)}</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div class="page-break"></div>
+
+    <div class="section">
+      <h2>💡 Detailed Recommendations</h2>
+      <h3>🔴 Critical Actions (Immediate):</h3>
+      <ul>
+        ${underS3Slots > 0 ? `<li><strong>Slab 3 Under-Drawal (${underS3Slots} slots):</strong> Implement real-time forecasting. Estimated loss: ₹${sumCol(underS3, 'slab3_loss').toFixed(2)}</li>` : '<li>✓ No critical under-drawal slots detected</li>'}
+        ${underS2Slots > 0 ? `<li><strong>Slab 2 Penalties (${underS2Slots} slots):</strong> Reduce 10% shortfall penalty. Current: ₹${sumCol(underS2, 'slab2_penalty').toFixed(2)}</li>` : '<li>✓ No medium-risk under-drawal penalties</li>'}
+      </ul>
+
+      <h3>🟡 Short-term Actions (1-3 months):</h3>
+      <ul>
+        <li><strong>Improve Forecasting:</strong> Develop 4-6 hour ahead weather-based forecasts</li>
+        <li><strong>Intraday Updates:</strong> Update schedules 2-3 times daily before gate closure</li>
+        <li><strong>Storage Integration:</strong> Use ESS/battery to buffer ±3-5% variance</li>
+        <li><strong>Penalty Reduction Target:</strong> Reduce Slab 2 occurrence by 50% in next quarter</li>
+      </ul>
+
+      <h3>🟢 Long-term Actions (2026 & Beyond):</h3>
+      <ul>
+        <li><strong>2026 Regulatory Changes:</strong> Wind tolerance ±15%→±10%, Solar ±10%→±5%</li>
+        <li><strong>Forecasting Accuracy Target:</strong> Achieve 85%+ MAPE (PXIL standard)</li>
+        <li><strong>Monthly KPI Review:</strong> Track deviation trends, root-cause analysis</li>
+        <li><strong>Compliance Roadmap:</strong> Plan for 2031 parity with general sellers</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>📋 Settlement Summary</h2>
+      <table>
+        <tr style="background:#d4edff;">
+          <td><strong>Description</strong></td>
+          <td style="text-align:right;"><strong>Amount (₹)</strong></td>
+        </tr>
+        <tr>
+          <td>DSM Receivable (Under Drawal)</td>
+          <td style="text-align:right; color:#dc3545;">₹${underDSM.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td>DSM Payable (Over Drawal)</td>
+          <td style="text-align:right; color:#5cb85c;">₹${overDSM.toFixed(2)}</td>
+        </tr>
+        <tr style="background:#ffcccc;">
+          <td><strong>Penalties & Losses</strong></td>
+          <td style="text-align:right;"><strong class="risk-high">₹${totalPenalty.toFixed(2)}</strong></td>
+        </tr>
+        <tr style="background:#d4edff;">
+          <td><strong>NET SETTLEMENT</strong></td>
+          <td style="text-align:right;"><strong>₹${netSettlement.toFixed(2)}</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <p style="font-size:9px; color:#666; margin:0;">
+        <strong>Note:</strong> This report is based on CERC Regulation 8(4) for WS Sellers (2024 norms). 
+        2026 and 2031 roadmaps show tightening tolerance bands. For detailed slot-wise breakdowns, 
+        export the full Excel report.
+      </p>
+    </div>
+  `;
+
+  const opt = {
+    margin: [10, 10, 10, 10],
+    filename: `DSM_Summary_${new Date().toISOString().slice(0,10)}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+    jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+  };
+
+  const element = document.createElement('div');
+  element.innerHTML = pdfContent;
+  html2pdf().set(opt).from(element).save();
+}
+
+function buildPenaltyBreakdown(underRows) {
+  const container = $('penaltyBreakdown');
+  if (!container) return;
+  
+  const slab2WithPenalty = underRows.filter(r => { const d = Math.abs(r.Dev || 0); return d > 10; });
+  const slab2Penalty = slab2WithPenalty.reduce((s, r) => s + (r.slab2_penalty || 0), 0);
+  const slab2Entitled = slab2WithPenalty.reduce((s, r) => s + (r.slab2_entitled || 0), 0);
+  const slab2Paid = slab2WithPenalty.reduce((s, r) => s + (r.slab2_paid || 0), 0);
+  
+  const slab3Rows = underRows.filter(r => { const d = Math.abs(r.Dev || 0); return d > 15; });
+  const slab3Loss = slab3Rows.reduce((s, r) => s + (r.slab3_loss || 0), 0);
+  const slab3Entitled = slab3Rows.reduce((s, r) => s + (r.slab3_entitled || 0), 0);
+  const totalPenalty = slab2Penalty + slab3Loss;
+  let html = '';
+  if (slab2WithPenalty.length > 0) {
+    html += `<div class="penalty-item"><h5>Slab 2 Penalties (10% Shortfall)</h5><p>Total Slots with Slab 2 Penalty: <strong>${slab2WithPenalty.length}</strong></p><p>Total Entitled (100%): <strong>₹${slab2Entitled.toFixed(2)}</strong></p><p>Amount Paid (90%): <strong>₹${slab2Paid.toFixed(2)}</strong></p><div class="penalty-amount">🔴 PENALTY (10%): ₹${slab2Penalty.toFixed(2)}</div><button onclick="showDrilldown('slab2', ${JSON.stringify(slab2WithPenalty).replace(/"/g, '&quot;')})">View Details</button></div>`;
+  }
+  if (slab3Rows.length > 0) {
+    html += `<div class="penalty-item"><h5>Slab 3 Potential Loss (100% Forfeiture)</h5><p>Total Slots in Slab 3: <strong>${slab3Rows.length}</strong></p><p>Total Entitled (100%): <strong>₹${slab3Entitled.toFixed(2)}</strong></p><p>Amount Paid (0%): <strong>₹0.00</strong></p><div class="penalty-amount">⚠️ POTENTIAL LOSS (100%): ₹${slab3Loss.toFixed(2)}</div><button onclick="showDrilldown('slab3', ${JSON.stringify(slab3Rows).replace(/"/g, '&quot;')})">View Details</button></div>`;
+  }
+  html += `<div class="penalty-item" style="border-left-color: #d9534f; background: #ffe6e6;"><h5>TOTAL PENALTIES & POTENTIAL LOSS</h5><div class="penalty-amount" style="font-size: 16px;">₹${totalPenalty.toFixed(2)}</div><p style="margin-top: 8px; color: #666; font-size: 11px;">Slab 2: ₹${slab2Penalty.toFixed(2)} + Slab 3: ₹${slab3Loss.toFixed(2)}</p></div>`;
+  container.innerHTML = html;
+}
+
+function showDrilldown(slabType, rows) {
+  const modal = $('drilldownModal');
+  const title = $('modalTitle');
+  const tableHead = $('drilldownHead');
+  const tableBody = $('drilldownBody');
+  const totalEl = $('drilldownTotal');
+  if (slabType === 'slab2') {
+    title.innerText = 'SLAB 2 PENALTIES - DETAILED BREAKDOWN (10% Shortfall)';
+    tableHead.innerHTML = `<tr><th>Slot #</th><th>Date</th><th>Time Slot</th><th>Scheduled</th><th>Actual</th><th>Variance %</th><th>Entitled (₹)</th><th>Paid @ 90% (₹)</th><th>Penalty 10% (₹)</th></tr>`;
+    tableBody.innerHTML = '';
+    let totalPenalty = 0;
+    rows.forEach((r, idx) => {
+      const penalty = r.slab2_penalty || 0;
+      totalPenalty += penalty;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${idx + 1}</td><td>${r.Date}</td><td>${r.Slot}</td><td>${r.Scheduled.toFixed(3)}</td><td>${r.Actual.toFixed(3)}</td><td>${r.Dev.toFixed(2)}%</td><td>₹${(r.slab2_entitled || 0).toFixed(2)}</td><td>₹${(r.slab2_paid || 0).toFixed(2)}</td><td class="sign-negative">₹${penalty.toFixed(2)}</td>`;
+      tableBody.appendChild(tr);
+    });
+    totalEl.innerText = `Total Penalty: ₹${totalPenalty.toFixed(2)}`;
+  } else if (slabType === 'slab3') {
+    title.innerText = 'SLAB 3 POTENTIAL LOSS - DETAILED BREAKDOWN (100% Forfeiture)';
+    tableHead.innerHTML = `<tr><th>Slot #</th><th>Date</th><th>Time Slot</th><th>Scheduled</th><th>Actual</th><th>Variance %</th><th>Entitled (₹)</th><th>Paid (₹)</th><th>Potential Loss (₹)</th></tr>`;
+    tableBody.innerHTML = '';
+    let totalLoss = 0;
+    rows.forEach((r, idx) => {
+      const loss = r.slab3_loss || 0;
+      totalLoss += loss;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${idx + 1}</td><td>${r.Date}</td><td>${r.Slot}</td><td>${r.Scheduled.toFixed(3)}</td><td>${r.Actual.toFixed(3)}</td><td>${r.Dev.toFixed(2)}%</td><td>₹${(r.slab3_entitled || 0).toFixed(2)}</td><td>₹0.00</td><td class="sign-negative">₹${loss.toFixed(2)}</td>`;
+      tableBody.appendChild(tr);
+    });
+    totalEl.innerText = `Total Potential Loss: ₹${totalLoss.toFixed(2)}`;
+  }
+  modal.style.display = 'block';
+}
+
+function closeDrilldown() {
+  const modal = $('drilldownModal');
+  modal.style.display = 'none';
+}
+
+window.onclick = function(event) {
+  const modal = $('drilldownModal');
+  if (event.target === modal) { modal.style.display = 'none'; }
+}
+
+function buildSummaryOfTrades() {
+  const allRows = resultRows || [];
+  const underRows = allRows.filter(r => r.Type === 'Under');
+  const overRows = allRows.filter(r => r.Type === 'Over');
+  const totalSlots = allRows.length;
+  const totalScheduled = allRows.reduce((s, r) => s + (r.Scheduled || 0), 0);
+  const totalActual = allRows.reduce((s, r) => s + (r.Actual || 0), 0);
+  const dsmPayable = overRows.reduce((s, r) => s + Math.max(0, r.DSM || 0), 0);
+  const dsmReceivable = underRows.reduce((s, r) => s + Math.abs(Math.min(0, r.DSM || 0)), 0);
+  const netSettlement = dsmPayable - dsmReceivable;
+  const tbody = $('summaryTradesBody');
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td>${totalSlots}</td><td>${totalScheduled.toFixed(3)}</td><td>${totalActual.toFixed(3)}</td><td class="sign-positive">₹${dsmPayable.toFixed(2)}</td><td class="sign-negative">₹${dsmReceivable.toFixed(2)}</td><td>${netSettlement < 0 ? '-' : ''}₹${Math.abs(netSettlement).toFixed(2)}</td></tr>`;
+}
+</script>
+
+</body>
+</html>

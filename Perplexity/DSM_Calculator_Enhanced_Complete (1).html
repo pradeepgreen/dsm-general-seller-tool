@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DSM Calculator Pro - CERC 2024 (Audit Version)</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+/* --- ORIGINAL STYLES PRESERVED --- */
+:root {
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --secondary: #64748b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border: #e2e8f0;
+    --text-main: #1e293b;
+    --text-light: #64748b;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 2rem;
+    text-align: center;
+}
+header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+header p { opacity: 0.9; font-size: 0.95rem; }
+
+/* Tabs */
+.tabs { display: flex; border-bottom: 1px solid var(--border); background: #f1f5f9; }
+.tab-button {
+    flex: 1;
+    padding: 1rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-light);
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+}
+.tab-button:hover { background: #e2e8f0; }
+.tab-button.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: white;
+}
+
+/* Tab Content */
+.tab-content { display: none; padding: 2rem; animation: fadeIn 0.3s ease; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Forms */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.form-group { margin-bottom: 1rem; }
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+.form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1); }
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    font-size: 1rem;
+}
+.btn-primary { background: var(--primary); color: white; width: 100%; }
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+.btn-outline:hover { background: var(--bg); }
+
+/* PSP Toggle Switch */
+.switch-container { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+.switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--primary); }
+input:checked + .slider:before { transform: translateX(24px); }
+.mode-label { font-weight: 600; color: var(--primary); }
+
+/* --- ADVANCED OUTPUT STYLES --- */
+.badge { background: var(--primary); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin: 2px; display: inline-block; }
+.table-wrap { max-height: 400px; overflow: auto; border:1px solid var(--border); border-radius: 6px; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+th, td { border: 1px solid var(--border); padding: 8px; text-align: center; }
+th { background: #f8fafc; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
+.sign-negative { color: var(--danger); font-weight: bold; }
+.sign-positive { color: var(--success); font-weight: bold; }
+.sign-warning { color: var(--warning); font-weight: bold; }
+
+.card-row { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px; min-width: 160px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.card h4 { margin: 0; font-size: 13px; color: var(--text-light); }
+.card p { margin: 8px 0 0; font-weight: 600; font-size: 16px; }
+
+/* Tabs for Results */
+.result-tabs { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0; }
+.result-tab-btn { padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; color: var(--text-light); }
+.result-tab-btn:hover { color: var(--primary); background: #f1f5f9; }
+.result-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+.modal { position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); display: none; }
+.modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 95%; max-width: 1000px; border-radius: 6px; max-height: 80vh; overflow-y: auto; }
+.close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+.close:hover { color: black; }
+
+/* Utility */
+.alert { padding: 1rem; border-radius: 8px; margin-bottom:1rem; display: none; }
+.alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.step-bar { display: flex; margin-bottom: 2rem; padding: 0 1rem; }
+.step { flex: 1; text-align: center; position: relative; padding-bottom: 10px; color: var(--text-light); font-weight: 500; font-size: 0.9rem; }
+.step.active { color: var(--primary); font-weight: 700; }
+.step.active::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 3px; background: var(--primary); border-radius: 2px; }
+.sheet-list { display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0; }
+.sheet-btn { padding: 8px 16px; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+.sheet-btn:hover { border-color: var(--primary); }
+.sheet-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>DSM Calculator Pro</h1>
+        <p>CERC 2024 Regulations | Audit Mode | Financial Segregation</p>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('manual')">Manual Entry</button>
+        <button class="tab-button" onclick="switchTab('excel')">Excel Upload</button>
+        <button class="tab-button" onclick="switchTab('results')">Audit Results</button>
+    </div>
+
+    <div id="manual" class="tab-content active">
+        <div id="manual-alert" class="alert alert-error"></div>
+
+        <div class="switch-container">
+            <span>Operation Mode</span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="mode-label" id="mode-text">Generation</span>
+                <label class="switch">
+                    <input type="checkbox" id="psp-toggle" onchange="togglePSP()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="manual-date" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Time Slot</label>
+                <select id="manual-time" class="form-control">
+                    <option value="">Select Slot</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Scheduled (MWh)</label>
+                <input type="number" id="manual-scheduled" class="form-control" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Actual (MWh)</label>
+                <input type="number" id="manual-actual" class="form-control" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>PPA Rate (&#8377;/MWh)</label>
+                <input type="number" id="manual-rate" class="form-control" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Frequency (Hz)</label>
+                <input type="number" id="manual-freq" class="form-control" step="0.01" placeholder="50.00">
+            </div>
+            <div class="form-group">
+                <label>Audit Exception</label>
+                <select id="manual-audit" class="form-control">
+                    <option value="None">None (Standard Calculation)</option>
+                    <option value="Force Majeure">Force Majeure</option>
+                    <option value="Grid Failure">Grid Failure</option>
+                    <option value="Outage">Planned Outage</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="calculateManual()">Calculate DSM</button>
+    </div>
+
+    <div id="excel" class="tab-content">
+        <div class="step-bar">
+            <div class="step active" id="step1">1. Upload</div>
+            <div class="step" id="step2">2. Select Sheet</div>
+            <div class="step" id="step3">3. Map Columns</div>
+        </div>
+
+        <div id="upload-stage">
+            <div class="form-group">
+                <label>Select Excel File (.xlsx, .xls)</label>
+                <input type="file" id="file-input" class="form-control" accept=".xlsx, .xls">
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 20px;">
+                Ensure your file has headers in second row.
+            </p>
+        </div>
+
+        <div id="sheet-stage" style="display: none;">
+            <h3>Select Data Sheet</h3>
+            <p style="margin-bottom: 10px; color: var(--text-light);">We found multiple sheets. Please select one containing DSM data.</p>
+            <div id="sheet-buttons" class="sheet-list"></div>
+            <button class="btn btn-outline" onclick="resetUpload()" style="margin-top: 10px;">Upload Different File</button>
+        </div>
+
+        <div id="mapping-stage" style="display: none;">
+            <h3>Map Columns</h3>
+            <p style="margin-bottom: 20px; color: var(--text-light);">Match your Excel headers to calculator fields.</p>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Date Column</label>
+                    <select id="map-date" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Time Column</label>
+                    <select id="map-time" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Scheduled Column</label>
+                    <select id="map-sch" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Actual Column</label>
+                    <select id="map-act" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Rate Column (&#8377;/MWh)</label>
+                    <select id="map-rate" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Frequency Column</label>
+                    <select id="map-freq" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>PSP Mode Column (Optional)</label>
+                    <select id="map-psp" class="form-control"><option value="-1">Ignore / Default</option></select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="processBatch()">Process Batch & Calculate</button>
+            <button class="btn btn-outline" onclick="goToSheetSelect()">Back</button>
+        </div>
+    </div>
+
+    <div id="results" class="tab-content">
+        <div id="no-result" style="text-align: center; padding: 50px; color: var(--text-light);">
+            No calculations performed yet.
+        </div>
+
+        <div id="result-dashboard" style="display: none;">
+            <h2>2. Output Summary</h2>
+            <div style="margin-bottom: 15px;">
+                <span class="badge" id="totalSlots">Slots: 0</span>
+                <span class="badge" id="totalDSM">Net Settlement: &#8377;0</span>
+            </div>
+
+            <h3 style="margin-top:12px; margin-bottom:8px;">Summary of All Trades</h3>
+            <div class="table-wrap" style="max-height:none; margin-bottom:15px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>No of Trades</th>
+                    <th>Scheduled (MWh)</th>
+                    <th>Actual (MWh)</th>
+                    <th>DSM Payable (Under &#8377;)</th>
+                    <th>DSM Receivable (Over &#8377;)</th>
+                    <th>Net Settlement (&#8377;)</th>
+                  </tr>
+                </thead>
+                <tbody id="summaryTradesBody">
+                  <tr>
+                    <td>0</td><td>0.00</td><td>0.00</td><td>&#8377;0</td><td>&#8377;0</td><td>&#8377;0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="result-tabs">
+              <button class="result-tab-btn active" id="btnUnder" onclick="showResultTab('tab-under')">Under Injection</button>
+              <button class="result-tab-btn" id="btnOver" onclick="showResultTab('tab-over')">Over Injection</button>
+              <button class="result-tab-btn" id="btnHighValue" onclick="showResultTab('tab-high')">Significant Deviations (>5k)</button>
+              <button class="result-tab-btn" id="btnAnnexure" onclick="showResultTab('tab-annexure')">Annexure: Detailed Ledger</button>
+            </div>
+
+            <div style="background:#f9f9f9; padding:10px; border-radius:6px; margin:15px 0; border:1px solid #e2e8f0;">
+              <strong style="display:block; margin-bottom:8px; color:#333;">📊 ANALYTICS & EXPORT:</strong>
+              <button class="btn btn-primary" onclick="exportSummaryPDF()" style="width:auto; display:inline-block; margin-right:10px; background:#9b59b6;">📋 2-Page PDF Summary</button>
+              <button class="btn btn-primary" onclick="downloadExcel()" style="width:auto; display:inline-block; background:#0b5ed7;">Export Detailed Excel</button>
+            </div>
+
+            <div id="tab-under" class="result-tab-content">
+              <h3>Under Injection (Schedule > Actual)</h3>
+
+              <div class="card-row">
+                <div class="card"><h4>Total Slots</h4><p id="u_slots">0</p></div>
+                <div class="card"><h4>Scheduled (MWh)</h4><p id="u_sch">0</p></div>
+                <div class="card"><h4>Actual (MWh)</h4><p id="u_act">0</p></div>
+                <div class="card"><h4>Total Payable (&#8377;)</h4><p id="u_dsm" class="sign-negative">&#8377;0</p></div>
+                <div class="card"><h4>Paid @ RR (&#8377;)</h4><p id="u_atrr">&#8377;0</p></div>
+                <div class="card"><h4>Total Penalty (&#8377;)</h4><p id="u_aboverr" class="sign-negative">&#8377;0</p></div>
+              </div>
+
+              <h4 style="margin-top:12px">Segregation of Penalty (Under Injection)</h4>
+              <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Component</th>
+                    <th>Deviation (MWh)</th>
+                    <th>Value @ Ref Rate</th>
+                    <th>DSM Amount (Actual)</th>
+                    <th>Penalty Paid (Extra)</th>
+                  </tr>
+                </thead>
+                <tbody id="under_slab"></tbody>
+              </table>
+              </div>
+            </div>
+
+            <div id="tab-over" class="result-tab-content" style="display:none;">
+              <h3>Over Injection (Actual > Schedule)</h3>
+
+              <div class="card-row">
+                <div class="card"><h4>Total Slots</h4><p id="o_slots">0</p></div>
+                <div class="card"><h4>Scheduled (MWh)</h4><p id="o_sch">0</p></div>
+                <div class="card"><h4>Actual (MWh)</h4><p id="o_act">0</p></div>
+                <div class="card"><h4>Total Receivable (&#8377;)</h4><p id="o_dsm" class="sign-positive">&#8377;0</p></div>
+                <div class="card"><h4>Paid @ RR (&#8377;)</h4><p id="o_atrr">&#8377;0</p></div>
+                <div class="card"><h4>Revenue Loss (&#8377;)</h4><p id="o_aboverr" class="sign-warning">&#8377;0</p></div>
+              </div>
+
+              <h4 style="margin-top:12px">Segregation of Revenue Loss (Over Injection)</h4>
+              <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Component</th>
+                    <th>Deviation (MWh)</th>
+                    <th>Value @ Ref Rate</th>
+                    <th>DSM Amount (Actual)</th>
+                    <th>Revenue Loss</th>
+                  </tr>
+                </thead>
+                <tbody id="over_slab"></tbody>
+              </table>
+              </div>
+            </div>
+
+            <div id="tab-high" class="result-tab-content" style="display:none;">
+              <h3>Significant Deviations (> &#8377;5,000 Impact)</h3>
+              <p style="color:#64748b; font-size:0.95rem; margin-bottom:15px;">
+                This list includes <strong>all</strong> Under or Over injection instances where the Penalty (paid extra) or Revenue Loss (missed income) exceeds &#8377;5,000. These are your material audit points.
+              </p>
+
+              <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Dev %</th>
+                    <th>Actual DSM (&#8377;)</th>
+                    <th>Ref Value (&#8377;)</th>
+                    <th>Penalty / Loss (&#8377;)</th>
+                  </tr>
+                </thead>
+                <tbody id="highValueBody">
+                    <tr><td colspan="7">No significant deviations found.</td></tr>
+                </tbody>
+              </table>
+              </div>
+            </div>
+
+            <div id="tab-annexure" class="result-tab-content" style="display:none;">
+                <h3 style="margin-top:12px">Annexure: Detailed Ledger</h3>
+                <div class="table-wrap">
+                <table>
+                <thead>
+                <tr>
+                <th>Date</th><th>Time Slot</th><th>Scheduled (MWh)</th><th>Actual (MWh)</th><th>Frequency</th><th>Dev %</th><th>Type</th><th>DSM Amount (&#8377;)</th><th>Ref Rate Value (&#8377;)</th><th>Penalty / Loss (&#8377;)</th>
+                </tr>
+                </thead>
+                <tbody id="slotBody"></tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="drilldownModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeDrilldown()">&times;</span>
+    <h3 id="modalTitle">Details</h3>
+    <div class="table-wrap">
+      <table id="drilldownTable">
+        <thead id="drilldownHead"></thead>
+        <tbody id="drilldownBody"></tbody>
+      </table>
+    </div>
+    <div style="text-align:right; margin-top:15px; padding-top:15px; border-top:1px solid #ddd;">
+      <strong id="drilldownTotal" style="font-size:14px;">Total: &#8377;0.00</strong>
+    </div>
+  </div>
+</div>
+
+<script>
+    // --- State ---
+    let rawData = [];
+    let headers = [];
+    let workbook = null;
+    let currentSheetName = '';
+    let isPSPMode = false;
+    let resultRows = []; 
+    let jsonSheetData = []; 
+
+    // --- Initialization ---
+    window.onload = function() {
+        const timeSelect = document.getElementById('manual-time');
+        for(let i=0; i<24; i++) {
+            let timeStr = i.toString().padStart(2, '0') + ":00";
+            let opt = document.createElement('option');
+            opt.value = timeStr;
+            opt.innerText = `${timeStr} - ${((i+1)%24).toString().padStart(2,'0')}:00`;
+            timeSelect.appendChild(opt);
+        }
+        
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('manual-date').value = `${yyyy}-${mm}-${dd}`;
+        document.getElementById('manual-time').value = "00:00";
+
+        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+    };
+
+    // --- UI Logic ---
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        const buttons = document.querySelectorAll('.tab-button');
+        if(tabId === 'manual') buttons[0].classList.add('active');
+        if(tabId === 'excel') buttons[1].classList.add('active');
+        if(tabId === 'results') buttons[2].classList.add('active');
+    }
+
+    function showResultTab(id) {
+        document.querySelectorAll('.result-tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.result-tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(id).style.display = 'block';
+        if(id === 'tab-under') document.getElementById('btnUnder').classList.add('active');
+        if(id === 'tab-over') document.getElementById('btnOver').classList.add('active');
+        if(id === 'tab-high') document.getElementById('btnHighValue').classList.add('active');
+        if(id === 'tab-annexure') document.getElementById('btnAnnexure').classList.add('active');
+    }
+
+    function togglePSP() {
+        const toggle = document.getElementById('psp-toggle');
+        isPSPMode = toggle.checked;
+        document.getElementById('mode-text').innerText = isPSPMode ? "PSP Pumping" : "Generation";
+        document.getElementById('mode-text').style.color = isPSPMode ? "#d97706" : "#4f46e5";
+    }
+
+    function showError(msg, location = 'manual-alert') {
+        const el = document.getElementById(location);
+        el.innerText = msg;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 5000);
+    }
+
+    // --- Core DSM Logic (CERC 2024) ---
+    // Multiplier kept at 10 as per user confirmation
+    function interpolate(freq, startF, endF, startR, endR) {
+        if (freq <= startF) return startR;
+        if (freq >= endF) return endR;
+        const percent = (freq - startF) / (endF - startF);
+        return startR + (endR - startR) * percent;
+    }
+
+    function getRates(freq, direction, slab) {
+        let multiplier = 1.0;
+        if (slab === 1) {
+            if (direction === "UI") {
+                if (freq > 50.05) multiplier = 0.85;
+                else if (freq > 50.03 && freq <= 50.05) multiplier = interpolate(freq, 50.03, 50.05, 1.0, 0.85);
+                else if (freq >= 49.97 && freq <= 50.03) multiplier = 1.0;
+                else if (freq >= 49.90 && freq < 49.97) multiplier = interpolate(freq, 49.90, 49.97, 1.5, 1.0);
+                else if (freq < 49.90) multiplier = 1.5;
+            } else {
+                if (freq >= 50.10) multiplier = -0.1;
+                else if (freq > 50.05 && freq < 50.10) multiplier = 0.0;
+                else if (freq > 50.03 && freq <= 50.05) multiplier = interpolate(freq, 50.03, 50.05, 1.0, 0.5);
+                else if (freq >= 49.97 && freq <= 50.03) multiplier = 1.0;
+                else if (freq >= 49.90 && freq < 49.97) multiplier = interpolate(freq, 49.90, 49.97, 1.15, 1.0);
+                else if (freq < 49.90) multiplier = 1.15;
+            }
+        } else {
+            if (direction === "UI") {
+                if (freq >= 50.00) multiplier = 1.0;
+                else if (freq >= 49.90 && freq < 50.00) multiplier = 1.5;
+                else if (freq < 49.90) multiplier = 2.0;
+            } else {
+                if (freq < 50.10) multiplier = 0.0;
+                else if (freq >= 50.10) multiplier = -0.1;
+            }
+        }
+        return multiplier;
+    }
+
+    function calculateDSMData(date, time, scheduled, actual, rate, freq, modePSP) {
+        const deviation = actual - scheduled;
+        const absDev = Math.abs(deviation);
+        const volumeLimit = scheduled * 0.10;
+        
+        // Quantum Calculation
+        let s1Quantum = Math.min(absDev, volumeLimit);
+        let s2Quantum = Math.max(0, absDev - volumeLimit);
+
+        const isUnder = deviation < 0;
+        const r1 = getRates(freq, isUnder ? "UI" : "OI", 1);
+        const r2 = getRates(freq, isUnder ? "UI" : "OI", 2);
+
+        // ORIGINAL CALCULATION LOGIC PRESERVED (Multiplier 10)
+        const baseCharge = (quantum) => quantum * 10 * rate; 
+
+        // Actual Charges (With frequency multipliers)
+        const s1Charge = baseCharge(s1Quantum) * r1;
+        const s2Charge = baseCharge(s2Quantum) * r2;
+        const totalCharge = s1Charge + s2Charge;
+
+        // Base Charges (At PPA Rate) for Comparison
+        const s1BaseCharge = baseCharge(s1Quantum) * 1.0; 
+        const s2BaseCharge = baseCharge(s2Quantum) * 1.0;
+
+        // Differential (Penalty/Loss)
+        let s1Diff = 0; 
+        let s2Diff = 0;
+
+        if (isUnder) {
+            // Payable: If we pay more than Base, it's a penalty
+            s1Diff = s1Charge - s1BaseCharge; 
+            s2Diff = s2Charge - s2BaseCharge;
+        } else {
+            // Receivable: If we receive less than Base, it's a loss
+            s1Diff = s1BaseCharge - s1Charge;
+            s2Diff = s2BaseCharge - s2Charge;
+        }
+
+        return {
+            date, time, scheduled, actual, freq,
+            deviation, direction: isUnder ? "Under-Injection" : "Over-Injection",
+            s1Quantum, s2Quantum,
+            s1RateMult: r1, s2RateMult: r2,
+            s1Charge, s2Charge, totalCharge,
+            s1BaseCharge, s2BaseCharge,
+            s1Diff, s2Diff, 
+            modePSP
+        };
+    }
+
+    function calculateManual() {
+        const date = document.getElementById('manual-date').value;
+        const time = document.getElementById('manual-time').value;
+        const sch = document.getElementById('manual-scheduled').value;
+        const act = document.getElementById('manual-actual').value;
+        const rate = document.getElementById('manual-rate').value;
+        const freq = document.getElementById('manual-freq').value;
+        const audit = document.getElementById('manual-audit').value;
+
+        if (!date) { showError("Missing Field: Date."); return; }
+        if (!time) { showError("Missing Field: Time Slot."); return; }
+        if (sch === '' || isNaN(parseFloat(sch))) { showError("Missing Field: Scheduled (MWh)."); return; }
+        if (act === '' || isNaN(parseFloat(act))) { showError("Missing Field: Actual (MWh)."); return; }
+        if (rate === '' || isNaN(parseFloat(rate))) { showError("Missing Field: Rate (&#8377;/MWh)."); return; }
+        if (freq === '' || isNaN(parseFloat(freq))) { showError("Missing Field: Frequency (Hz)."); return; }
+
+        const parsedSch = parseFloat(sch);
+        const parsedAct = parseFloat(act);
+        const parsedRate = parseFloat(rate);
+        const parsedFreq = parseFloat(freq);
+
+        const result = calculateDSMData(date, time, parsedSch, parsedAct, parsedRate, parsedFreq, isPSPMode);
+        
+        if(audit !== 'None') {
+            result.s1Charge = 0; result.s2Charge = 0; result.totalCharge = 0;
+            result.s1BaseCharge = 0; result.s2BaseCharge = 0;
+            result.s1Diff = 0; result.s2Diff = 0;
+            result.auditFlag = `Exception Applied: ${audit}`;
+        }
+
+        resultRows = [result];
+        buildTabSummaries();
+        
+        document.getElementById('no-result').style.display = 'none';
+        document.getElementById('result-dashboard').style.display = 'block';
+        switchTab('results');
+    }
+
+    // --- Excel Logic ---
+    function handleFileUpload(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            try {
+                workbook = XLSX.read(data, {type: 'array'});
+                presentSheetSelection();
+            } catch(err) {
+                showError("Error parsing Excel file.");
+                console.error(err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function presentSheetSelection() {
+        const sheetNames = workbook.SheetNames;
+        const container = document.getElementById('sheet-buttons');
+        container.innerHTML = '';
+        sheetNames.forEach(name => {
+            const btn = document.createElement('button');
+            btn.className = 'sheet-btn';
+            btn.innerText = name;
+            btn.onclick = () => selectSheet(name, btn);
+            container.appendChild(btn);
+        });
+        document.getElementById('upload-stage').style.display = 'none';
+        document.getElementById('sheet-stage').style.display = 'block';
+        updateStep(2);
+    }
+
+    function selectSheet(name, btnElement) {
+        document.querySelectorAll('.sheet-btn').forEach(b => b.classList.remove('active'));
+        btnElement.classList.add('active');
+        currentSheetName = name;
+        const worksheet = workbook.Sheets[name];
+        jsonSheetData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+        
+        let headerSelect = document.getElementById('header-row-select');
+        if(!headerSelect) {
+            const mappingHeader = document.querySelector('#mapping-stage h3');
+            const selectHTML = `
+                <div style="background: #e0f2fe; padding: 10px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bae6fd;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">⚠️ Which row contains your Column Headers?</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <select id="header-row-select" class="form-control" style="width: auto; display: inline-block;" onchange="updateHeaderMapping()">
+                        </select>
+                        <span style="font-size: 0.9rem; color: #0369a1;">(Data will be read from the next row)</span>
+                    </div>
+                </div>
+            `;
+            mappingHeader.insertAdjacentHTML('afterend', selectHTML);
+            headerSelect = document.getElementById('header-row-select');
+        }
+
+        headerSelect.innerHTML = '';
+        for(let i = 1; i <= Math.min(jsonSheetData.length, 10); i++) {
+            let opt = document.createElement('option');
+            opt.value = i;
+            opt.innerText = "Row " + i;
+            let rowPreview = jsonSheetData[i-1] ? jsonSheetData[i-1][0] : "(Empty)";
+            if(rowPreview) opt.innerText += ` (starts with "${rowPreview}")`;
+            if(i === 2) opt.selected = true;
+            headerSelect.appendChild(opt);
+        }
+        updateHeaderMapping();
+        document.getElementById('sheet-stage').style.display = 'none';
+        document.getElementById('mapping-stage').style.display = 'block';
+        updateStep(3);
+    }
+
+    function updateHeaderMapping() {
+        const selectedRowNum = parseInt(document.getElementById('header-row-select').value);
+        const headerIndex = selectedRowNum - 1;
+        headers = jsonSheetData[headerIndex] || [];
+        rawData = jsonSheetData.slice(headerIndex + 1);
+
+        const mapIds = ['map-date', 'map-time', 'map-sch', 'map-act', 'map-rate', 'map-freq', 'map-psp'];
+        mapIds.forEach(id => {
+            const sel = document.getElementById(id);
+            sel.innerHTML = '';
+            if(id === 'map-psp') sel.innerHTML = '<option value="-1">Ignore / Default</option>';
+            headers.forEach((h, index) => {
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.innerText = h || `Column ${index+1}`;
+                sel.appendChild(opt);
+            });
+        });
+
+        const detect = (keywords, id) => {
+            const idx = headers.findIndex(h => h && keywords.some(k => String(h).toLowerCase().includes(k)));
+            if(idx !== -1) document.getElementById(id).value = idx;
+        };
+        detect(['date'], 'map-date');
+        detect(['time', 'slot'], 'map-time');
+        detect(['schedule', 'sch'], 'map-sch');
+        detect(['actual', 'act'], 'map-act');
+        detect(['rate', 'ppa'], 'map-rate');
+        detect(['freq', 'hz'], 'map-freq');
+    }
+
+    function processBatch() {
+        const mDate = parseInt(document.getElementById('map-date').value);
+        const mTime = parseInt(document.getElementById('map-time').value);
+        const mSch = parseInt(document.getElementById('map-sch').value);
+        const mAct = parseInt(document.getElementById('map-act').value);
+        const mRate = parseInt(document.getElementById('map-rate').value);
+        const mFreq = parseInt(document.getElementById('map-freq').value);
+        const mPSP = parseInt(document.getElementById('map-psp').value);
+
+        resultRows = rawData.map(row => {
+            const val = (idx) => row[idx] !== undefined ? row[idx] : 0;
+            const dateVal = val(mDate); 
+            const timeVal = val(mTime);
+            const pspVal = mPSP === -1 ? false : String(val(mPSP)).toLowerCase().includes('pump');
+
+            let fmtDate = dateVal;
+            if(typeof dateVal === 'number' && dateVal > 20000) {
+                 const d = new Date(Math.round((dateVal - 25569)*86400*1000));
+                 fmtDate = d.toISOString().split('T')[0];
+            }
+
+            return calculateDSMData(
+                fmtDate,
+                timeVal,
+                parseFloat(val(mSch)) || 0,
+                parseFloat(val(mAct)) || 0,
+                parseFloat(val(mRate)) || 0,
+                parseFloat(val(mFreq)) || 50,
+                pspVal
+            );
+        }).filter(r => r.scheduled > 0); 
+
+        buildTabSummaries();
+        
+        document.getElementById('no-result').style.display = 'none';
+        document.getElementById('result-dashboard').style.display = 'block';
+        switchTab('results');
+    }
+
+    // --- OUTPUT RENDERING LOGIC ---
+
+    function buildTabSummaries() {
+        // 1. Calculate Deviation % for each row
+        resultRows.forEach(r => {
+            r.DevPct = r.scheduled > 0 ? ((r.actual - r.scheduled) / r.scheduled) * 100 : 0;
+            // Sign Convention for Storage:
+            // Under Injection (Actual < Sch) is Payable (-)
+            // Over Injection (Actual > Sch) is Receivable (+)
+            r.signedDSM = r.direction === 'Under-Injection' ? -r.totalCharge : r.totalCharge;
+        });
+
+        const under = resultRows.filter(r => r.direction === "Under-Injection");
+        const over  = resultRows.filter(r => r.direction === "Over-Injection");
+        
+        // FILTER: High Value Cases (> 5000 Penalty/Loss)
+        const highValueRows = resultRows.filter(r => Math.abs(r.s1Diff + r.s2Diff) > 5000);
+
+        // Summary Table
+        const totalSlots = resultRows.length;
+        const totalSch = resultRows.reduce((s,r)=>s+r.scheduled,0);
+        const totalAct = resultRows.reduce((s,r)=>s+r.actual,0);
+        
+        const uTotal = under.reduce((s,r) => s + r.signedDSM, 0);
+        const oTotal = over.reduce((s,r) => s + r.signedDSM, 0);
+        const net = uTotal + oTotal;
+
+        document.getElementById('totalSlots').innerText = 'Slots: ' + totalSlots;
+        document.getElementById('totalDSM').innerText = 'Net Settlement: ₹' + net.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        
+        document.getElementById('summaryTradesBody').innerHTML = `
+            <tr>
+                <td>${totalSlots}</td>
+                <td>${totalSch.toFixed(2)}</td>
+                <td>${totalAct.toFixed(2)}</td>
+                <td class="sign-negative">₹${Math.abs(uTotal).toFixed(2)}</td>
+                <td class="sign-positive">₹${Math.abs(oTotal).toFixed(2)}</td>
+                <td>${net < 0 ? '-' : ''}₹${Math.abs(net).toFixed(2)}</td>
+            </tr>
+        `;
+
+        // Under Injection Cards
+        const uSch = under.reduce((s,r)=>s+r.scheduled,0);
+        const uAct = under.reduce((s,r)=>s+r.actual,0);
+        const uRR = under.reduce((s,r)=>s+(r.s1BaseCharge+r.s2BaseCharge),0);
+        const uPen = under.reduce((s,r)=>s+(r.s1Diff+r.s2Diff),0);
+        
+        document.getElementById('u_slots').innerText = under.length;
+        document.getElementById('u_sch').innerText = uSch.toFixed(2);
+        document.getElementById('u_act').innerText = uAct.toFixed(2);
+        document.getElementById('u_dsm').innerText = '₹' + Math.abs(uTotal).toFixed(2); 
+        document.getElementById('u_dsm').className = 'sign-negative';
+        document.getElementById('u_atrr').innerText = '₹' + uRR.toFixed(2);
+        document.getElementById('u_aboverr').innerText = '₹' + uPen.toFixed(2);
+
+        // Over Injection Cards
+        const oSch = over.reduce((s,r)=>s+r.scheduled,0);
+        const oAct = over.reduce((s,r)=>s+r.actual,0);
+        const oRR = over.reduce((s,r)=>s+(r.s1BaseCharge+r.s2BaseCharge),0);
+        const oPen = over.reduce((s,r)=>s+(r.s1Diff+r.s2Diff),0); // Revenue Loss
+
+        document.getElementById('o_slots').innerText = over.length;
+        document.getElementById('o_sch').innerText = oSch.toFixed(2);
+        document.getElementById('o_act').innerText = oAct.toFixed(2);
+        document.getElementById('o_dsm').innerText = '₹' + Math.abs(oTotal).toFixed(2);
+        document.getElementById('o_dsm').className = 'sign-positive';
+        document.getElementById('o_atrr').innerText = '₹' + oRR.toFixed(2);
+        document.getElementById('o_aboverr').innerText = '₹' + oPen.toFixed(2);
+
+        // BUILD SPLIT TABLES
+        buildSlabTable(under, 'under_slab', true);
+        buildSlabTable(over, 'over_slab', false);
+
+        // Render High Value Table
+        renderHighValueTable(highValueRows);
+        
+        // Render Annexure
+        renderFullTable(resultRows);
+    }
+
+    function buildSlabTable(rows, tbodyId, isUnder) {
+        const summary = {
+            s1: { dev: 0, base: 0, actual: 0, diff: 0 },
+            s2: { dev: 0, base: 0, actual: 0, diff: 0 }
+        };
+
+        rows.forEach(r => {
+            summary.s1.dev += r.s1Quantum;
+            summary.s1.base += r.s1BaseCharge;
+            summary.s1.actual += r.s1Charge;
+            summary.s1.diff += r.s1Diff;
+
+            summary.s2.dev += r.s2Quantum;
+            summary.s2.base += r.s2BaseCharge;
+            summary.s2.actual += r.s2Charge;
+            summary.s2.diff += r.s2Diff;
+        });
+
+        const tbody = document.getElementById(tbodyId);
+        tbody.innerHTML = '';
+        const diffClass = isUnder ? 'sign-negative' : 'sign-warning';
+        
+        tbody.innerHTML += `
+            <tr>
+                <td style="font-weight:bold;">Up to 10%</td>
+                <td>${summary.s1.dev.toFixed(3)}</td>
+                <td>₹${summary.s1.base.toFixed(2)}</td>
+                <td>₹${summary.s1.actual.toFixed(2)}</td>
+                <td class="${diffClass}">₹${summary.s1.diff.toFixed(2)}</td>
+            </tr>
+        `;
+
+        tbody.innerHTML += `
+            <tr>
+                <td style="font-weight:bold;">More than 10%</td>
+                <td>${summary.s2.dev.toFixed(3)}</td>
+                <td>₹${summary.s2.base.toFixed(2)}</td>
+                <td>₹${summary.s2.actual.toFixed(2)}</td>
+                <td class="${diffClass}">₹${summary.s2.diff.toFixed(2)}</td>
+            </tr>
+        `;
+    }
+
+    function renderHighValueTable(rows) {
+        const tbody = document.getElementById('highValueBody');
+        tbody.innerHTML = '';
+        
+        if(rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center;">No high value deviations (>₹5,000) found.</td></tr>';
+            return;
+        }
+
+        rows.sort((a,b) => Math.abs(b.s1Diff + b.s2Diff) - Math.abs(a.s1Diff + a.s2Diff)); // Sort by impact desc
+
+        rows.forEach(r => {
+            const impact = r.s1Diff + r.s2Diff;
+            const impactClass = r.direction === 'Under-Injection' ? 'sign-negative' : 'sign-warning';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${r.date}</td>
+                <td>${r.time}</td>
+                <td>${r.direction}</td>
+                <td>${r.DevPct.toFixed(2)}%</td>
+                <td style="font-weight:bold;">₹${r.totalCharge.toFixed(2)}</td>
+                <td>₹${(r.s1BaseCharge+r.s2BaseCharge).toFixed(2)}</td>
+                <td class="${impactClass}">₹${impact.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderFullTable(rows) {
+        const tbody = document.getElementById('slotBody');
+        tbody.innerHTML = '';
+        rows.forEach(r => {
+            const diff = r.s1Diff + r.s2Diff;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${r.date}</td><td>${r.time}</td><td>${r.scheduled.toFixed(2)}</td><td>${r.actual.toFixed(2)}</td>
+                <td>${r.freq}</td><td>${r.DevPct.toFixed(2)}</td><td>${r.direction}</td>
+                <td>₹${r.totalCharge.toFixed(2)}</td>
+                <td>₹${(r.s1BaseCharge+r.s2BaseCharge).toFixed(2)}</td>
+                <td class="${r.direction === 'Under-Injection' ? 'sign-negative' : 'sign-warning'}">₹${diff.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function downloadExcel() {
+        if(resultRows.length === 0) return;
+        const wb = XLSX.utils.book_new();
+        const data = resultRows.map(r => ({
+            Date: r.date, Time: r.time, Scheduled: r.scheduled, Actual: r.actual, 
+            Frequency: r.freq, Deviation_Pct: r.DevPct.toFixed(2), 
+            Direction: r.direction, 
+            S1_Quantum: r.s1Quantum, S2_Quantum: r.s2Quantum,
+            S1_Charge: r.s1Charge, S2_Charge: r.s2Charge, 
+            Total_Charge: r.totalCharge, 
+            Base_Value: r.s1BaseCharge + r.s2BaseCharge,
+            Penalty_Or_Loss: r.s1Diff + r.s2Diff
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "DSM_Ledger");
+        XLSX.writeFile(wb, "DSM_Audit_Report.xlsx");
+    }
+
+    function exportSummaryPDF() {
+        alert("Generating PDF...");
+        const element = document.getElementById('result-dashboard');
+        const opt = {
+            margin: 0.5,
+            filename: 'DSM_Summary.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+    
+    function resetUpload() {
+        document.getElementById('file-input').value = '';
+        document.getElementById('upload-stage').style.display = 'block';
+        document.getElementById('sheet-stage').style.display = 'none';
+        document.getElementById('mapping-stage').style.display = 'none';
+        updateStep(1);
+    }
+    function goToSheetSelect() {
+        document.getElementById('mapping-stage').style.display = 'none';
+        document.getElementById('sheet-stage').style.display = 'block';
+        updateStep(2);
+    }
+    function updateStep(stepNum) {
+        document.querySelectorAll('.step').forEach((el, idx) => {
+            if(idx + 1 === stepNum) el.classList.add('active');
+            else el.classList.remove('active');
+        });
+    }
+    function closeDrilldown() {
+        document.getElementById('drilldownModal').style.display = 'none';
+    }
+
+</script>
+
+
+<!-- ========== ENHANCEMENTS ========== -->
+<!-- Executive Summary, Slab Drill-down, High-Value Cases, Download Reports -->
+<script>
+/**
+ * DSM Calculator Enhancements
+ * Adds Executive Summary, Slab Drill-down, High-Value Cases, and Report Generation
+ */
+
+(function() {
+    'use strict';
+
+    let reasonsMap = {};
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    function init() {
+        console.log('DSM Enhancements loaded');
+        injectCSS();
+        injectHTML();
+        interceptCalculateFunction();
+    }
+
+    function injectCSS() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .executive-summary-section {
+                margin-top: 20px;
+                padding: 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                border: 1px solid #dee2e6;
+            }
+
+            .summary-cards-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+                margin: 15px 0;
+            }
+
+            .summary-metric-card {
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid #667eea;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                transition: transform 0.2s;
+            }
+
+            .summary-metric-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            }
+
+            .summary-metric-card h4 {
+                margin: 0 0 8px 0;
+                font-size: 0.85em;
+                color: #6c757d;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .summary-metric-card .metric-value {
+                font-size: 1.8em;
+                font-weight: bold;
+                color: #212529;
+            }
+
+            .summary-metric-card.penalty .metric-value {
+                color: #dc3545;
+            }
+
+            .summary-metric-card.revenue .metric-value {
+                color: #28a745;
+            }
+
+            .download-buttons-group {
+                display: flex;
+                gap: 10px;
+                margin: 15px 0;
+                flex-wrap: wrap;
+            }
+
+            .btn-download-html, .btn-download-summary {
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                transition: all 0.3s;
+            }
+
+            .btn-download-html {
+                background: linear-gradient(135deg, #17a2b8, #138496);
+            }
+
+            .btn-download-summary {
+                background: linear-gradient(135deg, #6c757d, #5a6268);
+            }
+
+            .btn-download-html:hover, .btn-download-summary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            }
+
+            .slab-drilldown {
+                margin-top: 20px;
+            }
+
+            .slab-header {
+                background: linear-gradient(135deg, #007bff, #0056b3);
+                color: white;
+                padding: 12px 15px;
+                border-radius: 6px 6px 0 0;
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                user-select: none;
+                transition: background 0.3s;
+            }
+
+            .slab-header:hover {
+                background: linear-gradient(135deg, #0056b3, #004085);
+            }
+
+            .slab-toggle-icon {
+                font-size: 1.2em;
+                transition: transform 0.3s;
+                font-weight: bold;
+            }
+
+            .slab-toggle-icon.open {
+                transform: rotate(180deg);
+            }
+
+            .slab-summary-bar {
+                background: #e9ecef;
+                padding: 10px 15px;
+                display: flex;
+                justify-content: space-around;
+                font-size: 0.9em;
+                border-left: 1px solid #dee2e6;
+                border-right: 1px solid #dee2e6;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .slab-summary-bar > div {
+                font-weight: 600;
+            }
+
+            .slab-content {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.4s ease-out;
+                border: 1px solid #dee2e6;
+                border-top: none;
+                border-radius: 0 0 6px 6px;
+                background: white;
+            }
+
+            .slab-content.open {
+                max-height: 3000px;
+                transition: max-height 0.6s ease-in;
+            }
+
+            .slab-content .table-wrap {
+                margin: 0;
+                max-height: 500px;
+                overflow-y: auto;
+            }
+
+            .high-value-section {
+                margin-top: 20px;
+            }
+
+            .reason-input-cell {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            .reason-select, .reason-text-input {
+                padding: 6px 10px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                font-size: 0.9em;
+            }
+
+            .reason-select {
+                flex: 1;
+                min-width: 140px;
+            }
+
+            .reason-text-input {
+                flex: 2;
+                min-width: 180px;
+            }
+
+            .reason-save-btn {
+                padding: 6px 12px;
+                background: #28a745;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.85em;
+                white-space: nowrap;
+                transition: background 0.3s;
+            }
+
+            .reason-save-btn:hover {
+                background: #218838;
+            }
+
+            .reason-saved-indicator {
+                color: #28a745;
+                font-weight: bold;
+                font-size: 0.9em;
+            }
+
+            .highlight-penalty {
+                background-color: #fff3cd !important;
+                font-weight: 600;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function injectHTML() {
+        const resultDashboard = document.getElementById('result-dashboard');
+        if (!resultDashboard) return;
+
+        const enhancementsContainer = document.createElement('div');
+        enhancementsContainer.id = 'enhancements-container';
+        enhancementsContainer.innerHTML = `
+            <div class="executive-summary-section" id="executive-summary" style="display:none;">
+                <h3 style="margin-bottom: 15px;">📊 Executive Summary Dashboard</h3>
+                <div class="download-buttons-group">
+                    <button class="btn-download-html" onclick="window.downloadHTMLReport()">🌐 Download HTML Report</button>
+                    <button class="btn-download-summary" onclick="window.downloadExecutiveSummary()">📋 Download Executive Summary (Excel)</button>
+                </div>
+                <div class="summary-cards-grid" id="executiveSummaryCards"></div>
+            </div>
+
+            <div class="slab-drilldown" id="slab-drilldown" style="display:none;">
+                <h3 style="margin: 20px 0 15px 0;">📈 Slab-wise Drill-down Analysis</h3>
+
+                <div style="margin-bottom: 20px;">
+                    <div class="slab-header" onclick="window.toggleSlabContent('slab1')">
+                        <span><strong>Slab 1:</strong> Up to 10% Deviation</span>
+                        <span class="slab-toggle-icon" id="slab1-icon">▼</span>
+                    </div>
+                    <div class="slab-summary-bar">
+                        <div>Cases: <span id="slab1-count">0</span></div>
+                        <div>Total Deviation: <span id="slab1-deviation">0.00</span> MWh</div>
+                        <div>Total Penalty: ₹<span id="slab1-penalty">0.00</span></div>
+                    </div>
+                    <div class="slab-content" id="slab1-content">
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th><th>Time</th><th>Scheduled</th><th>Actual</th>
+                                        <th>Deviation</th><th>Frequency</th><th>Type</th>
+                                        <th>DSM Amount (₹)</th><th>Penalty (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="slab1-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <div class="slab-header" onclick="window.toggleSlabContent('slab2')">
+                        <span><strong>Slab 2:</strong> More than 10% Deviation</span>
+                        <span class="slab-toggle-icon" id="slab2-icon">▼</span>
+                    </div>
+                    <div class="slab-summary-bar">
+                        <div>Cases: <span id="slab2-count">0</span></div>
+                        <div>Total Deviation: <span id="slab2-deviation">0.00</span> MWh</div>
+                        <div>Total Penalty: ₹<span id="slab2-penalty">0.00</span></div>
+                    </div>
+                    <div class="slab-content" id="slab2-content">
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th><th>Time</th><th>Scheduled</th><th>Actual</th>
+                                        <th>Deviation</th><th>Frequency</th><th>Type</th>
+                                        <th>DSM Amount (₹)</th><th>Penalty (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="slab2-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="high-value-section" id="high-value-cases" style="display:none;">
+                <h3 style="margin: 20px 0 10px 0;">⚠️ High Value Cases (Penalty > ₹10,000)</h3>
+                <p style="color: #6c757d; margin-bottom: 15px; font-size: 0.95rem;">
+                    These cases require reason documentation. Select a category and provide additional details.
+                </p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th><th>Time</th><th>Type</th><th>Deviation (MWh)</th>
+                                <th>Penalty (₹)</th><th>Reason Category</th>
+                                <th>Additional Details</th><th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="high-value-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        resultDashboard.appendChild(enhancementsContainer);
+    }
+
+    function interceptCalculateFunction() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    const resultDashboard = document.getElementById('result-dashboard');
+                    if (resultDashboard && resultDashboard.style.display !== 'none') {
+                        setTimeout(populateEnhancements, 500);
+                    }
+                }
+            });
+        });
+
+        const resultDashboard = document.getElementById('result-dashboard');
+        if (resultDashboard) {
+            observer.observe(resultDashboard, { attributes: true });
+        }
+    }
+
+    function populateEnhancements() {
+        try {
+            const allData = extractDataFromOriginalTables();
+            if (allData.length === 0) return;
+
+            document.getElementById('executive-summary').style.display = 'block';
+            document.getElementById('slab-drilldown').style.display = 'block';
+
+            populateExecutiveSummary(allData);
+            populateSlabAnalysis(allData);
+            populateHighValueCases(allData);
+        } catch (error) {
+            console.error('Error populating enhancements:', error);
+        }
+    }
+
+    function extractDataFromOriginalTables() {
+        const allData = [];
+
+        ['#tab-under', '#tab-over'].forEach(selector => {
+            const table = document.querySelector(selector + ' table tbody');
+            if (table) {
+                const rows = table.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 9) {
+                        allData.push({
+                            date: cells[0].textContent.trim(),
+                            time: cells[1].textContent.trim(),
+                            scheduled: parseFloat(cells[2].textContent) || 0,
+                            actual: parseFloat(cells[3].textContent) || 0,
+                            deviation: parseFloat(cells[4].textContent) || 0,
+                            devPercent: parseFloat(cells[5].textContent) || 0,
+                            frequency: parseFloat(cells[6].textContent) || 0,
+                            type: selector === '#tab-under' ? 'Under Injection' : 'Over Injection',
+                            dsmAmount: parseFloat(cells[7].textContent.replace(/[₹,]/g, '')) || 0,
+                            penalty: parseFloat(cells[8].textContent.replace(/[₹,]/g, '')) || 0,
+                            slab: Math.abs(parseFloat(cells[5].textContent) || 0) <= 10 ? 1 : 2
+                        });
+                    }
+                });
+            }
+        });
+
+        return allData;
+    }
+
+    function populateExecutiveSummary(data) {
+        const totalTrades = data.length;
+        const totalSchedules = data.reduce((sum, d) => sum + Math.abs(d.scheduled), 0);
+        const totalDeviation = data.reduce((sum, d) => sum + Math.abs(d.deviation), 0);
+
+        const underData = data.filter(d => d.type === 'Under Injection');
+        const overData = data.filter(d => d.type === 'Over Injection');
+
+        const underPenalty = underData.reduce((sum, d) => sum + d.penalty, 0);
+        const overPenalty = overData.reduce((sum, d) => sum + d.penalty, 0);
+        const totalPenalty = data.reduce((sum, d) => sum + d.penalty, 0);
+
+        const cardsHTML = `
+            <div class="summary-metric-card">
+                <h4>Total Trades</h4>
+                <div class="metric-value">${totalTrades}</div>
+            </div>
+            <div class="summary-metric-card">
+                <h4>Total Schedules</h4>
+                <div class="metric-value">${totalSchedules.toFixed(2)} <small style="font-size:0.5em;">MWh</small></div>
+            </div>
+            <div class="summary-metric-card">
+                <h4>Total Deviation</h4>
+                <div class="metric-value">${totalDeviation.toFixed(2)} <small style="font-size:0.5em;">MWh</small></div>
+            </div>
+            <div class="summary-metric-card ${underPenalty >= 0 ? 'penalty' : 'revenue'}">
+                <h4>Under Injection</h4>
+                <div class="metric-value">₹${formatCurrency(underPenalty)}</div>
+            </div>
+            <div class="summary-metric-card ${overPenalty >= 0 ? 'penalty' : 'revenue'}">
+                <h4>Over Injection</h4>
+                <div class="metric-value">₹${formatCurrency(overPenalty)}</div>
+            </div>
+            <div class="summary-metric-card ${totalPenalty >= 0 ? 'penalty' : 'revenue'}">
+                <h4>Total Penalty Paid</h4>
+                <div class="metric-value">₹${formatCurrency(totalPenalty)}</div>
+            </div>
+        `;
+
+        document.getElementById('executiveSummaryCards').innerHTML = cardsHTML;
+        window.enhancementData = data;
+    }
+
+    function populateSlabAnalysis(data) {
+        const slab1Data = data.filter(d => d.slab === 1);
+        const slab2Data = data.filter(d => d.slab === 2);
+
+        populateSlabTable('slab1', slab1Data);
+        populateSlabTable('slab2', slab2Data);
+    }
+
+    function populateSlabTable(slabId, slabData) {
+        const count = slabData.length;
+        const totalDev = slabData.reduce((sum, d) => sum + Math.abs(d.deviation), 0);
+        const totalPenalty = slabData.reduce((sum, d) => sum + d.penalty, 0);
+
+        document.getElementById(`${slabId}-count`).textContent = count;
+        document.getElementById(`${slabId}-deviation`).textContent = totalDev.toFixed(2);
+        document.getElementById(`${slabId}-penalty`).textContent = formatCurrency(totalPenalty);
+
+        const tbody = document.getElementById(`${slabId}-body`);
+        if (slabData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#6c757d;">No cases in this slab</td></tr>';
+            return;
+        }
+
+        let html = '';
+        slabData.forEach(d => {
+            html += `
+                <tr>
+                    <td>${d.date}</td>
+                    <td>${d.time}</td>
+                    <td>${d.scheduled.toFixed(2)}</td>
+                    <td>${d.actual.toFixed(2)}</td>
+                    <td>${d.deviation.toFixed(2)}</td>
+                    <td>${d.frequency.toFixed(2)}</td>
+                    <td>${d.type}</td>
+                    <td>₹${formatCurrency(d.dsmAmount)}</td>
+                    <td class="${d.penalty < 0 ? 'positive' : 'negative'}">₹${formatCurrency(d.penalty)}</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function populateHighValueCases(data) {
+        const highValueData = data.filter(d => Math.abs(d.penalty) > 10000);
+
+        if (highValueData.length === 0) {
+            document.getElementById('high-value-cases').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('high-value-cases').style.display = 'block';
+
+        const tbody = document.getElementById('high-value-body');
+        let html = '';
+
+        highValueData.forEach((d, idx) => {
+            const key = `${d.date}_${d.time}`;
+            const saved = reasonsMap[key];
+
+            html += `
+                <tr class="highlight-penalty">
+                    <td>${d.date}</td>
+                    <td>${d.time}</td>
+                    <td>${d.type}</td>
+                    <td>${d.deviation.toFixed(2)}</td>
+                    <td class="${d.penalty < 0 ? 'positive' : 'negative'}">₹${formatCurrency(d.penalty)}</td>
+                    <td>
+                        <select id="reason-cat-${idx}" class="reason-select" ${saved ? 'disabled' : ''}>
+                            <option value="">-- Select --</option>
+                            <option value="Plant Outage" ${saved?.category === 'Plant Outage' ? 'selected' : ''}>Plant Outage</option>
+                            <option value="Grid Disturbance" ${saved?.category === 'Grid Disturbance' ? 'selected' : ''}>Grid Disturbance</option>
+                            <option value="Fuel Shortage" ${saved?.category === 'Fuel Shortage' ? 'selected' : ''}>Fuel Shortage</option>
+                            <option value="Equipment Failure" ${saved?.category === 'Equipment Failure' ? 'selected' : ''}>Equipment Failure</option>
+                            <option value="Weather Conditions" ${saved?.category === 'Weather Conditions' ? 'selected' : ''}>Weather Conditions</option>
+                            <option value="Demand Forecast Error" ${saved?.category === 'Demand Forecast Error' ? 'selected' : ''}>Demand Forecast Error</option>
+                            <option value="Transmission Constraints" ${saved?.category === 'Transmission Constraints' ? 'selected' : ''}>Transmission Constraints</option>
+                            <option value="Communication Failure" ${saved?.category === 'Communication Failure' ? 'selected' : ''}>Communication Failure</option>
+                            <option value="Scheduled Maintenance" ${saved?.category === 'Scheduled Maintenance' ? 'selected' : ''}>Scheduled Maintenance</option>
+                            <option value="Force Majeure" ${saved?.category === 'Force Majeure' ? 'selected' : ''}>Force Majeure</option>
+                            <option value="Commercial Decision" ${saved?.category === 'Commercial Decision' ? 'selected' : ''}>Commercial Decision</option>
+                            <option value="Other" ${saved?.category === 'Other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" id="reason-text-${idx}" class="reason-text-input" 
+                               placeholder="Additional details..." 
+                               value="${saved?.details || ''}"
+                               ${saved ? 'disabled' : ''}>
+                    </td>
+                    <td>
+                        ${saved ? 
+                            '<span class="reason-saved-indicator">✓ Saved</span>' :
+                            `<button class="reason-save-btn" onclick="window.saveReason(${idx}, '${key}')">Save</button>`
+                        }
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    window.toggleSlabContent = function(slabId) {
+        const content = document.getElementById(`${slabId}-content`);
+        const icon = document.getElementById(`${slabId}-icon`);
+        content.classList.toggle('open');
+        icon.classList.toggle('open');
+    };
+
+    window.saveReason = function(idx, key) {
+        const category = document.getElementById(`reason-cat-${idx}`).value;
+        const details = document.getElementById(`reason-text-${idx}`).value;
+
+        if (!category) {
+            alert('Please select a reason category');
+            return;
+        }
+
+        reasonsMap[key] = { category, details };
+
+        document.getElementById(`reason-cat-${idx}`).disabled = true;
+        document.getElementById(`reason-text-${idx}`).disabled = true;
+
+        const btn = document.getElementById(`reason-text-${idx}`).parentElement.nextElementSibling;
+        btn.innerHTML = '<span class="reason-saved-indicator">✓ Saved</span>';
+
+        alert('Reason saved successfully!');
+    };
+
+    window.downloadHTMLReport = function() {
+        const reportHTML = generateHTMLReport();
+        const blob = new Blob([reportHTML], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `DSM_Report_${new Date().toISOString().split('T')[0]}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+        alert('HTML report downloaded successfully!');
+    };
+
+    window.downloadExecutiveSummary = function() {
+        if (typeof XLSX === 'undefined') {
+            alert('Excel library not loaded.');
+            return;
+        }
+
+        const data = window.enhancementData || [];
+        if (data.length === 0) {
+            alert('No data available');
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+
+        const totalTrades = data.length;
+        const totalSchedules = data.reduce((s, d) => s + Math.abs(d.scheduled), 0);
+        const totalDeviation = data.reduce((s, d) => s + Math.abs(d.deviation), 0);
+        const underPenalty = data.filter(d => d.type === 'Under Injection').reduce((s, d) => s + d.penalty, 0);
+        const overPenalty = data.filter(d => d.type === 'Over Injection').reduce((s, d) => s + d.penalty, 0);
+        const totalPenalty = data.reduce((s, d) => s + d.penalty, 0);
+
+        const summaryData = [
+            { 'Metric': 'Total Trades', 'Value': totalTrades },
+            { 'Metric': 'Total Schedules (MWh)', 'Value': totalSchedules.toFixed(2) },
+            { 'Metric': 'Total Deviation (MWh)', 'Value': totalDeviation.toFixed(2) },
+            { 'Metric': 'Under Injection Penalty (₹)', 'Value': underPenalty.toFixed(2) },
+            { 'Metric': 'Over Injection Penalty (₹)', 'Value': overPenalty.toFixed(2) },
+            { 'Metric': 'Total Penalty Paid (₹)', 'Value': totalPenalty.toFixed(2) }
+        ];
+
+        const ws1 = XLSX.utils.json_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(wb, ws1, "Summary Metrics");
+
+        const slab1Data = data.filter(d => d.slab === 1);
+        const slab2Data = data.filter(d => d.slab === 2);
+
+        const slabSummary = [
+            {
+                'Slab': 'Up to 10%',
+                'Cases': slab1Data.length,
+                'Total Deviation (MWh)': slab1Data.reduce((s, d) => s + Math.abs(d.deviation), 0).toFixed(2),
+                'Total Penalty (₹)': slab1Data.reduce((s, d) => s + d.penalty, 0).toFixed(2)
+            },
+            {
+                'Slab': 'More than 10%',
+                'Cases': slab2Data.length,
+                'Total Deviation (MWh)': slab2Data.reduce((s, d) => s + Math.abs(d.deviation), 0).toFixed(2),
+                'Total Penalty (₹)': slab2Data.reduce((s, d) => s + d.penalty, 0).toFixed(2)
+            }
+        ];
+
+        const ws2 = XLSX.utils.json_to_sheet(slabSummary);
+        XLSX.utils.book_append_sheet(wb, ws2, "Slab Analysis");
+
+        const highValueData = data.filter(d => Math.abs(d.penalty) > 10000).map(d => {
+            const key = `${d.date}_${d.time}`;
+            const reason = reasonsMap[key];
+            return {
+                'Date': d.date,
+                'Time': d.time,
+                'Type': d.type,
+                'Deviation (MWh)': d.deviation.toFixed(2),
+                'Penalty (₹)': d.penalty.toFixed(2),
+                'Reason Category': reason?.category || 'Not Specified',
+                'Additional Details': reason?.details || ''
+            };
+        });
+
+        if (highValueData.length > 0) {
+            const ws3 = XLSX.utils.json_to_sheet(highValueData);
+            XLSX.utils.book_append_sheet(wb, ws3, "High Value Cases");
+        }
+
+        const detailedData = data.map(d => {
+            const key = `${d.date}_${d.time}`;
+            const reason = reasonsMap[key];
+            return {
+                'Date': d.date,
+                'Time': d.time,
+                'Scheduled (MWh)': d.scheduled.toFixed(2),
+                'Actual (MWh)': d.actual.toFixed(2),
+                'Deviation (MWh)': d.deviation.toFixed(2),
+                'Deviation %': d.devPercent.toFixed(2),
+                'Frequency (Hz)': d.frequency.toFixed(2),
+                'Type': d.type,
+                'Slab': d.slab === 1 ? 'Up to 10%' : 'More than 10%',
+                'DSM Amount (₹)': d.dsmAmount.toFixed(2),
+                'Penalty (₹)': d.penalty.toFixed(2),
+                'Reason Category': reason?.category || '',
+                'Additional Details': reason?.details || ''
+            };
+        });
+
+        const ws4 = XLSX.utils.json_to_sheet(detailedData);
+        XLSX.utils.book_append_sheet(wb, ws4, "Detailed Analysis");
+
+        XLSX.writeFile(wb, `Executive_Summary_${new Date().toISOString().split('T')[0]}.xlsx`);
+        alert('Executive Summary downloaded!');
+    };
+
+    function generateHTMLReport() {
+        const summaryCards = document.getElementById('executiveSummaryCards').innerHTML;
+        const slab1Body = document.getElementById('slab1-body').innerHTML;
+        const slab2Body = document.getElementById('slab2-body').innerHTML;
+        const highValueBody = document.getElementById('high-value-body').innerHTML;
+
+        const slab1Count = document.getElementById('slab1-count').textContent;
+        const slab1Dev = document.getElementById('slab1-deviation').textContent;
+        const slab1Penalty = document.getElementById('slab1-penalty').textContent;
+
+        const slab2Count = document.getElementById('slab2-count').textContent;
+        const slab2Dev = document.getElementById('slab2-deviation').textContent;
+        const slab2Penalty = document.getElementById('slab2-penalty').textContent;
+
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSM Analysis Report - ${new Date().toLocaleDateString()}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .summary-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .summary-metric-card { background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .summary-metric-card h4 { margin: 0 0 8px 0; font-size: 0.85em; color: #6c757d; text-transform: uppercase; }
+        .summary-metric-card .metric-value { font-size: 1.8em; font-weight: bold; color: #212529; }
+        .summary-metric-card.penalty .metric-value { color: #dc3545; }
+        .summary-metric-card.revenue .metric-value { color: #28a745; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #667eea; color: white; font-weight: 600; }
+        tr:hover { background: #f8f9fa; }
+        .negative { color: #dc3545; font-weight: 600; }
+        .positive { color: #28a745; font-weight: 600; }
+        .highlight-penalty { background-color: #fff3cd; }
+        .slab-summary { background: #e9ecef; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .report-footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #6c757d; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ DSM Analysis Report</h1>
+        <p style="color: #6c757d;">Generated on ${new Date().toLocaleString()}</p>
+
+        <h2>📊 Executive Summary</h2>
+        <div class="summary-cards-grid">${summaryCards}</div>
+
+        <h2>📈 Slab 1: Up to 10% Deviation</h2>
+        <div class="slab-summary">
+            <strong>Cases:</strong> ${slab1Count} | 
+            <strong>Total Deviation:</strong> ${slab1Dev} MWh | 
+            <strong>Total Penalty:</strong> ₹${slab1Penalty}
+        </div>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Time</th><th>Scheduled</th><th>Actual</th><th>Deviation</th><th>Frequency</th><th>Type</th><th>DSM Amount (₹)</th><th>Penalty (₹)</th></tr>
+            </thead>
+            <tbody>${slab1Body}</tbody>
+        </table>
+
+        <h2>📈 Slab 2: More than 10% Deviation</h2>
+        <div class="slab-summary">
+            <strong>Cases:</strong> ${slab2Count} | 
+            <strong>Total Deviation:</strong> ${slab2Dev} MWh | 
+            <strong>Total Penalty:</strong> ₹${slab2Penalty}
+        </div>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Time</th><th>Scheduled</th><th>Actual</th><th>Deviation</th><th>Frequency</th><th>Type</th><th>DSM Amount (₹)</th><th>Penalty (₹)</th></tr>
+            </thead>
+            <tbody>${slab2Body}</tbody>
+        </table>
+
+        <h2>⚠️ High Value Cases (Penalty > ₹10,000)</h2>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Time</th><th>Type</th><th>Deviation (MWh)</th><th>Penalty (₹)</th><th>Reason Category</th><th>Additional Details</th><th>Status</th></tr>
+            </thead>
+            <tbody>${highValueBody || '<tr><td colspan="8" style="text-align:center;">No high value cases</td></tr>'}</tbody>
+        </table>
+
+        <div class="report-footer">
+            <p>DSM Charges Calculator - CERC DSM Regulation Compliant</p>
+            <p>This is a system-generated report</p>
+        </div>
+    </div>
+</body>
+</html>`;
+    }
+
+    function formatCurrency(num) {
+        return new Intl.NumberFormat('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(Math.abs(num));
+    }
+
+})();
+
+</script>
+
+</body>
+</html>

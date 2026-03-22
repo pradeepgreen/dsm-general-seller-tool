@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DSM Calculator Pro - Interactive Audit Tool</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+/* --- PROFESSIONAL THEME (Indigo/Clean) --- */
+:root {
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --secondary: #64748b;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border: #e2e8f0;
+    --text-main: #1e293b;
+    --text-light: #64748b;
+    --input-bg: #fff;
+    --input-border: #cbd5e1;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px; /* Widened for comment fields */
+    margin: 0 auto;
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 2rem;
+    text-align: center;
+}
+header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+header p { opacity: 0.9; font-size: 0.95rem; }
+
+/* Tabs */
+.tabs { display: flex; border-bottom: 1px solid var(--border); background: #f1f5f9; }
+.tab-button {
+    flex: 1;
+    padding: 1rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-light);
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+}
+.tab-button:hover { background: #e2e8f0; }
+.tab-button.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: white;
+}
+
+.tab-content { display: none; padding: 2rem; animation: fadeIn 0.3s ease; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Step Bar */
+.step-bar { display: flex; margin-bottom: 2rem; padding: 0 1rem; }
+.step { flex: 1; text-align: center; position: relative; padding-bottom: 10px; color: var(--text-light); font-weight: 500; font-size: 0.9rem; }
+.step.active { color: var(--primary); font-weight: 700; }
+.step.active::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 3px; background: var(--primary); border-radius: 2px; }
+
+/* Forms */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+.form-control {
+    width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; transition: border-color 0.2s;
+}
+.form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1); }
+
+/* Buttons */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; padding: 0.75rem 1.5rem;
+    border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; font-size: 1rem;
+}
+.btn-primary { background: var(--primary); color: white; width: 100%; }
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+.btn-outline:hover { background: var(--bg); }
+.sheet-btn { padding: 8px 16px; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; margin-right: 10px; margin-bottom: 10px; }
+.sheet-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+.btn-sm { padding: 4px 12px; font-size: 0.85rem; border-radius: 4px; background: #e2e8f0; color: #333; border: 1px solid #cbd5e1; cursor: pointer; }
+
+/* Tables */
+.table-wrap { max-height: 500px; overflow: auto; border:1px solid var(--border); border-radius: 6px; margin-top: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { border: 1px solid var(--border); padding: 10px; text-align: center; vertical-align: middle; }
+th { background: #f8fafc; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; color: var(--text-main); }
+.sign-negative { color: #ef4444; font-weight: bold; }
+.sign-positive { color: #10b981; font-weight: bold; }
+.sign-warning { color: #f59e0b; font-weight: bold; }
+
+/* Input for Comments */
+.comment-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    background: #fffbeb; /* Light yellow to highlight "action needed" */
+}
+.comment-input:focus { border-color: var(--primary); background: #fff; outline: none; }
+
+/* Cards */
+.card-row { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 15px; min-width: 160px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex: 1; }
+.card h4 { margin: 0; font-size: 13px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+.card p { margin: 8px 0 0; font-weight: 700; font-size: 18px; color: var(--text-main); }
+
+/* Result Tabs */
+.result-tabs { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 0; }
+.result-tab-btn { padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; color: var(--text-light); }
+.result-tab-btn:hover { color: var(--primary); background: #f1f5f9; }
+.result-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* Modal */
+.modal { position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); display: none; }
+.modal-content { background-color: #fefefe; margin: 4% auto; padding: 0; border: 1px solid #888; width: 90%; max-width: 1100px; border-radius: 8px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.modal-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+.modal-body { padding: 20px; }
+.close { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>DSM Calculator Pro</h1>
+        <p>Generation Audit Tool | Interactive Variance Analysis</p>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('manual')">Manual Entry</button>
+        <button class="tab-button" onclick="switchTab('excel')">Excel Upload</button>
+        <button class="tab-button" onclick="switchTab('results')">Audit & Response</button>
+    </div>
+
+    <div id="manual" class="tab-content active">
+        <div id="manual-alert" style="display:none; color:red; margin-bottom:10px;"></div>
+        <div style="background:#f8fafc; padding:10px; border:1px solid #e2e8f0; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+            <strong>Operation Mode:</strong>
+            <label><input type="checkbox" id="psp-toggle"> PSP / Storage</label>
+        </div>
+        <div class="form-grid">
+            <div class="form-group"><label>Date</label><input type="date" id="manual-date" class="form-control"></div>
+            <div class="form-group"><label>Time Slot</label><select id="manual-time" class="form-control"></select></div>
+            <div class="form-group"><label>Scheduled (MWh)</label><input type="number" id="manual-scheduled" class="form-control" placeholder="0.00"></div>
+            <div class="form-group"><label>Actual (MWh)</label><input type="number" id="manual-actual" class="form-control" placeholder="0.00"></div>
+            <div class="form-group"><label>PPA Rate (&#8377;/MWh)</label><input type="number" id="manual-rate" class="form-control" placeholder="0.00"></div>
+            <div class="form-group"><label>Frequency (Hz)</label><input type="number" id="manual-freq" class="form-control" placeholder="50.00"></div>
+        </div>
+        <button class="btn btn-primary" onclick="calculateManual()">Process Entry</button>
+    </div>
+
+    <div id="excel" class="tab-content">
+        <div class="step-bar">
+            <div class="step active" id="step1">1. Upload</div>
+            <div class="step" id="step2">2. Select Sheet</div>
+            <div class="step" id="step3">3. Map Columns</div>
+        </div>
+
+        <div id="upload-stage">
+            <div class="form-group">
+                <label>Select Audit File (.xlsx, .xls)</label>
+                <input type="file" id="file-input" class="form-control" accept=".xlsx, .xls">
+            </div>
+        </div>
+
+        <div id="sheet-stage" style="display: none;">
+            <h4>Select Worksheet</h4>
+            <div id="sheet-buttons" style="margin-top:10px;"></div>
+        </div>
+
+        <div id="mapping-stage" style="display: none;">
+            <div style="background: #e0f2fe; padding: 10px; border: 1px solid #bae6fd; margin-bottom: 20px; border-radius:6px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">⚠️ Select Header Row:</label>
+                <select id="header-row-select" class="form-control" style="width: auto;" onchange="updateHeaderMapping()"></select>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group"><label>Date</label><select id="map-date" class="form-control"></select></div>
+                <div class="form-group"><label>Time</label><select id="map-time" class="form-control"></select></div>
+                <div class="form-group"><label>Scheduled</label><select id="map-sch" class="form-control"></select></div>
+                <div class="form-group"><label>Actual</label><select id="map-act" class="form-control"></select></div>
+                <div class="form-group"><label>Freq (Hz)</label><select id="map-freq" class="form-control"></select></div>
+                <div class="form-group"><label>Rate</label><select id="map-rate" class="form-control"></select></div>
+            </div>
+            <button class="btn btn-primary" onclick="processBatch()">Generate Statement</button>
+        </div>
+    </div>
+
+    <div id="results" class="tab-content">
+        <div id="no-result" style="text-align: center; color: #999; padding: 40px;">No Data Processed</div>
+        
+        <div id="result-dashboard" style="display: none;">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background:#e0e7ff; padding:15px; border-radius:8px;">
+                <div>
+                    <h2 style="font-size:1.2rem; color:var(--primary-dark); margin-bottom:5px;">Statement of Deviation Charges</h2>
+                    <small style="color:#555;">Review filtered cases and provide comments before export.</small>
+                </div>
+                <div>
+                    <button class="btn btn-outline" style="background:#fff;" onclick="exportSummaryPDF()">PDF Report</button>
+                    <button class="btn btn-primary" onclick="downloadExcel()">Export Excel (with Comments)</button>
+                </div>
+            </div>
+
+            <div class="card-row">
+                <div class="card"><h4>Total Trades</h4><p id="totalSlots">0</p></div>
+                <div class="card"><h4>Total Scheduled (MWh)</h4><p id="totalSch">0.00</p></div>
+                <div class="card"><h4>Total Actual (MWh)</h4><p id="totalAct">0.00</p></div>
+                <div class="card"><h4>Net Settlement (&#8377;)</h4><p id="totalDSM" style="color:var(--primary);">0.00</p></div>
+            </div>
+
+            <div class="result-tabs">
+                <button class="result-tab-btn active" id="btnUnder" onclick="showSubTab('view-under')">Under Injection</button>
+                <button class="result-tab-btn" id="btnOver" onclick="showSubTab('view-over')">Over Injection</button>
+                <button class="result-tab-btn" id="btnMaterial" onclick="showSubTab('view-material')">Material Deviations (>10%)</button>
+                <button class="result-tab-btn" id="btnAnnex" onclick="showSubTab('view-ledger')">Detailed Annexure</button>
+            </div>
+
+            <div id="view-under">
+                <h3 style="margin-bottom:10px; font-size:1.1rem; border-bottom:1px solid #e2e8f0; padding-bottom:5px;">Slab-wise Under Injection</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;">Category</th>
+                                <th>Count</th>
+                                <th>Total Deviation (MWh)</th>
+                                <th>DSM Amount (&#8377;)</th>
+                                <th>Total Penalty (&#8377;)</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-under"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-over" style="display:none;">
+                <h3 style="margin-bottom:10px; font-size:1.1rem; border-bottom:1px solid #e2e8f0; padding-bottom:5px;">Slab-wise Over Injection</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;">Category</th>
+                                <th>Count</th>
+                                <th>Total Deviation (MWh)</th>
+                                <th>DSM Amount (&#8377;)</th>
+                                <th>Total Loss (&#8377;)</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-over"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-material" style="display:none;">
+                <h3 style="margin-bottom:10px; font-size:1.1rem; color:#ef4444;">Material Deviations (> 10% Variance)</h3>
+                <p style="font-size:0.9rem; color:#666; margin-bottom:15px;">
+                    Please review the cases below where deviation exceeds 10% and provide a reason. These comments will be included in the Excel export.
+                </p>
+                <div class="table-wrap">
+                    <table id="table-material">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Freq (Hz)</th>
+                                <th>Dev %</th>
+                                <th>DSM Amt (&#8377;)</th>
+                                <th>Penalty/Loss (&#8377;)</th>
+                                <th style="width:300px; text-align:left;">Reason for Deviation</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-ledger" style="display:none;">
+                <h3 style="margin-bottom:10px; font-size:1.1rem;">Annexure: Detailed Ledger</h3>
+                <div class="table-wrap" style="max-height:600px;">
+                    <table id="table-ledger">
+                        <thead>
+                            <tr>
+                                <th>Date</th><th>Time</th><th>Freq (Hz)</th><th>Sch</th><th>Act</th><th>Dev %</th><th>DSM Amt (&#8377;)</th><th>Penalty/Loss (&#8377;)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="drillModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle" style="margin:0;">Audit Detail</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="table-wrap" style="max-height: 60vh;">
+                <table id="modalTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time Slot</th>
+                            <th>Freq (Hz)</th>
+                            <th>Scheduled</th>
+                            <th>Actual</th>
+                            <th>Dev %</th>
+                            <th>DSM Amount (&#8377;)</th>
+                            <th>Penalty/Loss (&#8377;)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalBody"></tbody>
+                </table>
+            </div>
+            <div style="text-align:right; margin-top:15px; font-weight:bold; font-size:1.1rem;" id="modalTotal"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- APP STATE ---
+    let rawData = [];
+    let headers = [];
+    let workbook = null;
+    let resultRows = []; 
+    let isPSPMode = false;
+    let jsonSheetData = [];
+    // Store user comments: Key = rowID (unique string), Value = comment string
+    let userComments = {}; 
+
+    // --- INIT ---
+    window.onload = function() {
+        const sel = document.getElementById('manual-time');
+        for(let i=0; i<24; i++) {
+            let t = i.toString().padStart(2,'0') + ":00";
+            let opt = document.createElement('option');
+            opt.value = t;
+            opt.innerText = `${t} - ${((i+1)%24).toString().padStart(2,'0')}:00`;
+            sel.appendChild(opt);
+        }
+        document.getElementById('manual-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+    };
+
+    // --- UI HELPERS ---
+    function switchTab(id) {
+        document.querySelectorAll('.tab-content').forEach(d=>d.style.display='none');
+        document.querySelectorAll('.tab-button').forEach(b=>b.classList.remove('active'));
+        document.getElementById(id).style.display='block';
+        
+        const btns = document.querySelectorAll('.tab-button');
+        if(id==='manual') btns[0].classList.add('active');
+        if(id==='excel') btns[1].classList.add('active');
+        if(id==='results') btns[2].classList.add('active');
+    }
+
+    function showSubTab(id) {
+        ['view-under','view-over','view-material','view-ledger'].forEach(v => document.getElementById(v).style.display='none');
+        document.querySelectorAll('.result-tab-btn').forEach(b=>b.classList.remove('active'));
+        
+        document.getElementById(id).style.display='block';
+        if(id === 'view-under') document.getElementById('btnUnder').classList.add('active');
+        if(id === 'view-over') document.getElementById('btnOver').classList.add('active');
+        if(id === 'view-material') document.getElementById('btnMaterial').classList.add('active');
+        if(id === 'view-ledger') document.getElementById('btnAnnex').classList.add('active');
+    }
+
+    function updateStep(n) {
+        [1,2,3].forEach(i => {
+            const el = document.getElementById('step'+i);
+            if(i===n) el.classList.add('active'); else el.classList.remove('active');
+        });
+    }
+
+    function closeModal() { document.getElementById('drillModal').style.display='none'; }
+
+    // --- CALCULATION LOGIC ---
+    function interpolate(freq, startF, endF, startR, endR) {
+        if (freq <= startF) return startR;
+        if (freq >= endF) return endR;
+        return startR + (endR - startR) * ((freq - startF) / (endF - startF));
+    }
+
+    function getMultiplier(freq, direction, slab) {
+        let mult = 1.0;
+        if (slab === 1) {
+            if (direction === "UI") { // Under
+                if (freq > 50.05) mult = 0.85;
+                else if (freq > 50.03) mult = interpolate(freq, 50.03, 50.05, 1.0, 0.85);
+                else if (freq >= 49.97) mult = 1.0;
+                else if (freq >= 49.90) mult = interpolate(freq, 49.90, 49.97, 1.5, 1.0);
+                else mult = 1.5;
+            } else { // Over
+                if (freq >= 50.10) mult = -0.1;
+                else if (freq > 50.05) mult = 0.0;
+                else if (freq > 50.03) mult = interpolate(freq, 50.03, 50.05, 1.0, 0.5);
+                else if (freq >= 49.97) mult = 1.0;
+                else if (freq >= 49.90) mult = interpolate(freq, 49.90, 49.97, 1.15, 1.0);
+                else mult = 1.15;
+            }
+        } else { // Slab 2 (>10%)
+            if (direction === "UI") {
+                if (freq >= 50.00) mult = 1.0;
+                else if (freq >= 49.90) mult = 1.5;
+                else mult = 2.0;
+            } else {
+                if (freq < 50.10) mult = 0.0;
+                else mult = -0.1;
+            }
+        }
+        return mult;
+    }
+
+    function calcRow(date, time, sch, act, rate, freq) {
+        const dev = act - sch;
+        const absDev = Math.abs(dev);
+        const limit = sch * 0.10;
+        
+        let s1Q = Math.min(absDev, limit);
+        let s2Q = Math.max(0, absDev - limit);
+
+        const isUnder = dev < 0;
+        const dir = isUnder ? "UI" : "OI";
+
+        const r1 = getMultiplier(freq, dir, 1);
+        const r2 = getMultiplier(freq, dir, 2);
+
+        // Core Formula: Quantum * 10 * Rate
+        const baseCost = (q) => q * 10 * rate;
+        
+        const s1Actual = baseCost(s1Q) * r1;
+        const s2Actual = baseCost(s2Q) * r2;
+        const totalActual = s1Actual + s2Actual;
+
+        const s1Base = baseCost(s1Q) * 1.0;
+        const s2Base = baseCost(s2Q) * 1.0;
+
+        let s1Diff = 0, s2Diff = 0;
+        if(isUnder) {
+            s1Diff = s1Actual - s1Base;
+            s2Diff = s2Actual - s2Base;
+        } else {
+            s1Diff = s1Base - s1Actual;
+            s2Diff = s2Base - s2Actual;
+        }
+
+        // Unique ID for comment tracking
+        const id = `${date}_${time}_${Math.random().toString(36).substr(2, 5)}`;
+
+        return {
+            id, date, time, sch, act, freq, rate,
+            dev, absDev, isUnder,
+            s1Q, s2Q,
+            s1Actual, s2Actual, totalActual,
+            s1Base, s2Base,
+            s1Diff, s2Diff,
+            pct: sch > 0 ? (dev/sch)*100 : 0
+        };
+    }
+
+    function calculateManual() {
+        const d = document.getElementById('manual-date').value;
+        const t = document.getElementById('manual-time').value;
+        const s = parseFloat(document.getElementById('manual-scheduled').value)||0;
+        const a = parseFloat(document.getElementById('manual-actual').value)||0;
+        const r = parseFloat(document.getElementById('manual-rate').value)||0;
+        const f = parseFloat(document.getElementById('manual-freq').value)||50;
+
+        if(!d || !t) return alert("Date/Time required");
+        resultRows = [ calcRow(d, t, s, a, r, f) ];
+        renderResults();
+    }
+
+    // --- EXCEL LOGIC ---
+    function handleFileUpload(e) {
+        const f = e.target.files[0];
+        if(!f) return;
+        const r = new FileReader();
+        r.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            workbook = XLSX.read(data, {type:'array'});
+            
+            const div = document.getElementById('sheet-buttons');
+            div.innerHTML = '';
+            workbook.SheetNames.forEach(n => {
+                const b = document.createElement('button');
+                b.className = 'sheet-btn';
+                b.innerText = n;
+                b.onclick = () => loadSheet(n, b);
+                div.appendChild(b);
+            });
+            document.getElementById('upload-stage').style.display='none';
+            document.getElementById('sheet-stage').style.display='block';
+            updateStep(2);
+        };
+        r.readAsArrayBuffer(f);
+    }
+
+    function loadSheet(name, btn) {
+        document.querySelectorAll('.sheet-btn').forEach(b => b.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+
+        const ws = workbook.Sheets[name];
+        jsonSheetData = XLSX.utils.sheet_to_json(ws, {header:1});
+        
+        const hSel = document.getElementById('header-row-select');
+        hSel.innerHTML = '';
+        for(let i=1; i<=Math.min(10, jsonSheetData.length); i++) {
+            let opt = document.createElement('option');
+            opt.value = i;
+            opt.innerText = `Row ${i}: ${jsonSheetData[i-1].slice(0,3).join(', ')}...`;
+            if(i===2) opt.selected = true; 
+            hSel.appendChild(opt);
+        }
+
+        updateHeaderMapping();
+        document.getElementById('sheet-stage').style.display='none';
+        document.getElementById('mapping-stage').style.display='block';
+        updateStep(3);
+    }
+
+    function updateHeaderMapping() {
+        const rIdx = parseInt(document.getElementById('header-row-select').value) - 1;
+        headers = jsonSheetData[rIdx] || [];
+        rawData = jsonSheetData.slice(rIdx + 1);
+
+        ['map-date','map-time','map-sch','map-act','map-freq','map-rate'].forEach(id => {
+            const s = document.getElementById(id);
+            s.innerHTML = '';
+            headers.forEach((h,i) => {
+                let opt = document.createElement('option');
+                opt.value = i;
+                opt.innerText = h || `Col ${i+1}`;
+                s.appendChild(opt);
+            });
+        });
+        
+        const find = (arr, id) => {
+            let idx = headers.findIndex(h => h && arr.some(x => String(h).toLowerCase().includes(x)));
+            if(idx>-1) document.getElementById(id).value = idx;
+        };
+        find(['date'], 'map-date');
+        find(['time','slot'], 'map-time');
+        find(['sched','sch'], 'map-sch');
+        find(['act'], 'map-act');
+        find(['freq','hz'], 'map-freq');
+        find(['rate','ppa'], 'map-rate');
+    }
+
+    function processBatch() {
+        const idx = {
+            d: document.getElementById('map-date').value,
+            t: document.getElementById('map-time').value,
+            s: document.getElementById('map-sch').value,
+            a: document.getElementById('map-act').value,
+            f: document.getElementById('map-freq').value,
+            r: document.getElementById('map-rate').value
+        };
+
+        // Reset comments on new calculation
+        userComments = {};
+
+        resultRows = rawData.map(row => {
+            let dVal = row[idx.d];
+            if(typeof dVal === 'number' && dVal > 30000) {
+                dVal = new Date(Math.round((dVal - 25569)*86400*1000)).toISOString().split('T')[0];
+            }
+            return calcRow(
+                dVal,
+                row[idx.t],
+                parseFloat(row[idx.s])||0,
+                parseFloat(row[idx.a])||0,
+                parseFloat(row[idx.r])||0,
+                parseFloat(row[idx.f])||50
+            );
+        }).filter(r => r.sch > 0);
+
+        renderResults();
+    }
+
+    // --- RENDERING ---
+    function renderResults() {
+        document.getElementById('no-result').style.display='none';
+        document.getElementById('result-dashboard').style.display='block';
+        switchTab('results');
+
+        const totSch = resultRows.reduce((a,b)=>a+b.sch,0);
+        const totAct = resultRows.reduce((a,b)=>a+b.act,0);
+        const netDSM = resultRows.reduce((a,b)=>a + (b.isUnder ? -b.totalActual : b.totalActual), 0);
+        
+        document.getElementById('totalSlots').innerText = resultRows.length;
+        document.getElementById('totalSch').innerText = totSch.toFixed(2);
+        document.getElementById('totalAct').innerText = totAct.toFixed(2);
+        document.getElementById('totalDSM').innerText = '₹ ' + netDSM.toLocaleString('en-IN', {minimumFractionDigits:2});
+
+        renderBucketTable('tbody-under', true);
+        renderBucketTable('tbody-over', false);
+        renderMaterialTable();
+        renderLedger();
+    }
+
+    function renderBucketTable(tbodyId, isUnder) {
+        const subset = resultRows.filter(r => r.isUnder === isUnder);
+        let bucket1 = { count:0, dev:0, dsm:0, pen:0 }; // <= 10%
+        let bucket2 = { count:0, dev:0, dsm:0, pen:0 }; // > 10%
+
+        subset.forEach(r => {
+            const pct = Math.abs(r.pct);
+            const totalPen = r.s1Diff + r.s2Diff;
+            const signedDSM = r.isUnder ? -r.totalActual : r.totalActual;
+
+            if(pct <= 10) {
+                bucket1.count++; bucket1.dev += r.absDev; bucket1.dsm += signedDSM; bucket1.pen += totalPen;
+            } else {
+                bucket2.count++; bucket2.dev += r.absDev; bucket2.dsm += signedDSM; bucket2.pen += totalPen;
+            }
+        });
+
+        const colorClass = isUnder ? 'sign-negative' : 'sign-warning';
+        const fmt = (v) => `₹${Math.abs(v).toFixed(2)}`;
+        const sign = (v) => v < 0 ? '-' : '';
+
+        const html = `
+            <tr>
+                <td style="text-align:left; font-weight:bold;">Up to 10%</td>
+                <td>${bucket1.count}</td>
+                <td>${bucket1.dev.toFixed(3)}</td>
+                <td class="${bucket1.dsm<0?'sign-negative':'sign-positive'}">${sign(bucket1.dsm)}${fmt(bucket1.dsm)}</td>
+                <td class="${colorClass}">${sign(bucket1.pen)}${fmt(bucket1.pen)}</td>
+                <td><button class="btn-sm" onclick="openDrill('${isUnder?'UI':'OI'}', 's1')">View Slots</button></td>
+            </tr>
+            <tr>
+                <td style="text-align:left; font-weight:bold;">More than 10%</td>
+                <td>${bucket2.count}</td>
+                <td>${bucket2.dev.toFixed(3)}</td>
+                <td class="${bucket2.dsm<0?'sign-negative':'sign-positive'}">${sign(bucket2.dsm)}${fmt(bucket2.dsm)}</td>
+                <td class="${colorClass}">${sign(bucket2.pen)}${fmt(bucket2.pen)}</td>
+                <td><button class="btn-sm" onclick="openDrill('${isUnder?'UI':'OI'}', 's2')">View Slots</button></td>
+            </tr>
+        `;
+        document.getElementById(tbodyId).innerHTML = html;
+    }
+
+    function openDrill(type, slab) {
+        const isUI = type === 'UI';
+        const modal = document.getElementById('drillModal');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+
+        title.innerText = `Detailed Breakdown: ${isUI ? "Under Injection" : "Over Injection"} (${slab==='s1'?'Up to 10%':'>10%'})`;
+
+        let data = resultRows.filter(r => r.isUnder === isUI);
+        if(slab === 's1') data = data.filter(r => Math.abs(r.pct) <= 10); 
+        if(slab === 's2') data = data.filter(r => Math.abs(r.pct) > 10);
+
+        body.innerHTML = '';
+        let totDiff = 0;
+        
+        if(data.length === 0) {
+             body.innerHTML = '<tr><td colspan="8" style="text-align:center;">No records found.</td></tr>';
+        } else {
+            data.forEach(r => {
+                const diff = r.s1Diff + r.s2Diff; 
+                totDiff += diff;
+                const tr = document.createElement('tr');
+                const signDSM = r.isUnder ? -r.totalActual : r.totalActual;
+                
+                tr.innerHTML = `
+                    <td>${r.date}</td><td>${r.time}</td><td>${r.freq}</td><td>${r.sch.toFixed(2)}</td><td>${r.act.toFixed(2)}</td><td>${r.pct.toFixed(2)}%</td>
+                    <td style="color:${signDSM<0?'red':'green'}">${signDSM<0?'-':''}₹${Math.abs(signDSM).toFixed(2)}</td>
+                    <td style="color:${isUI?'red':'orange'}; font-weight:bold;">${diff<0?'-':''}₹${Math.abs(diff).toFixed(2)}</td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+        document.getElementById('modalTotal').innerText = `Total Impact: ${totDiff<0?'-':''}₹${Math.abs(totDiff).toFixed(2)}`;
+        modal.style.display = 'flex';
+    }
+
+    // --- INTERACTIVE MATERIAL DEVIATION TABLE ---
+    function renderMaterialTable() {
+        const tbody = document.querySelector('#table-material tbody');
+        // FILTER: Material Deviations > 10% regardless of financial value
+        const material = resultRows.filter(r => Math.abs(r.pct) > 10);
+        
+        // Sort by highest deviation %
+        material.sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct));
+
+        tbody.innerHTML = '';
+        if(material.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px;">No material deviations (>10%) found.</td></tr>';
+            return;
+        }
+
+        material.forEach(r => {
+            const diff = r.s1Diff + r.s2Diff;
+            const signDSM = r.isUnder ? -r.totalActual : r.totalActual;
+            const tr = document.createElement('tr');
+            
+            // Get existing comment if any
+            const existingComment = userComments[r.id] || "";
+
+            tr.innerHTML = `
+                <td>${r.date}</td>
+                <td>${r.time}</td>
+                <td>${r.isUnder ? 'Under' : 'Over'}</td>
+                <td>${r.freq}</td>
+                <td style="font-weight:bold; color:#ef4444;">${r.pct.toFixed(2)}%</td>
+                <td>₹${Math.abs(signDSM).toFixed(2)}</td>
+                <td style="color:${r.isUnder?'red':'orange'}; font-weight:bold;">${diff<0?'-':''}₹${Math.abs(diff).toFixed(2)}</td>
+                <td style="text-align:left;">
+                    <input type="text" class="comment-input" 
+                           placeholder="Enter reason..." 
+                           value="${existingComment}" 
+                           oninput="saveComment('${r.id}', this.value)">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function saveComment(id, value) {
+        userComments[id] = value;
+    }
+
+    function renderLedger() {
+        const tbody = document.querySelector('#table-ledger tbody');
+        tbody.innerHTML = '';
+        resultRows.forEach(r => {
+            const diff = r.s1Diff + r.s2Diff;
+            const signDSM = r.isUnder ? -r.totalActual : r.totalActual;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${r.date}</td><td>${r.time}</td><td>${r.freq}</td><td>${r.sch.toFixed(2)}</td><td>${r.act.toFixed(2)}</td><td>${r.pct.toFixed(2)}%</td>
+                <td style="color:${signDSM<0?'red':'green'}">${signDSM<0?'-':''}₹${Math.abs(signDSM).toFixed(2)}</td>
+                <td style="color:${r.isUnder?'red':'orange'}; font-weight:bold;">${diff<0?'-':''}₹${Math.abs(diff).toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- EXPORT WITH COMMENTS ---
+    function downloadExcel() {
+        if(!resultRows.length) return;
+        
+        const data = resultRows.map(r => {
+            // Check if this row was a material deviation and has a comment
+            const reason = userComments[r.id] || "";
+            const isMaterial = Math.abs(r.pct) > 10 ? "Yes" : "No";
+
+            return {
+                Date: r.date,
+                Time: r.time,
+                Frequency_Hz: r.freq,
+                Scheduled_MWh: r.sch,
+                Actual_MWh: r.act,
+                Deviation_Pct: r.pct.toFixed(2),
+                Type: r.isUnder ? 'Under' : 'Over',
+                DSM_Payable_Receivable: r.isUnder ? -r.totalActual : r.totalActual,
+                Penalty_Or_Loss: r.s1Diff + r.s2Diff,
+                Material_Deviation: isMaterial,
+                Auditee_Reason: reason // The new column
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        // Auto-width for Reason column
+        if(!ws['!cols']) ws['!cols'] = [];
+        ws['!cols'][10] = { wch: 50 }; // Wide column for comments
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Audit_Ledger_Responses");
+        XLSX.writeFile(wb, "DSM_Audit_Response.xlsx");
+    }
+
+    function exportSummaryPDF() {
+        const el = document.getElementById('result-dashboard');
+        // Hide inputs for cleaner PDF
+        const inputs = document.querySelectorAll('.comment-input');
+        inputs.forEach(i => { i.setAttribute('data-val', i.value); i.outerHTML = `<span style="font-size:11px;">${i.value}</span>`; });
+
+        html2pdf().set({
+            margin: 0.3,
+            filename: 'DSM_Audit_Report.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+        }).from(el).save().then(() => {
+            // Restore inputs (simple reload for now or DOM manip, reloading easiest)
+            // location.reload(); 
+            // Or just alert user PDF is done.
+            alert("PDF Generated. Note: Input fields were flattened for PDF.");
+        });
+    }
+
+</script>
+</body>
+</html>

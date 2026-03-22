@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DSM Audit Dashboard - CERC 2024</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+<style>
+/* --- 1. PROFESSIONAL THEME (Clean Indigo) --- */
+:root {
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --bg-body: #f8fafc;
+    --card-bg: #ffffff;
+    --danger: #ef4444;
+    --success: #10b981;
+    --warning: #f59e0b;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-body);
+    color: var(--text-main);
+    line-height: 1.5;
+    padding: 20px;
+    font-size: 14px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+header {
+    background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    display: flex; justify-content: space-between; align-items: center;
+}
+header h1 { font-size: 1.5rem; margin: 0; font-weight: 700; }
+header p { opacity: 0.9; font-size: 0.9rem; margin-top: 4px; }
+
+.tabs { display: flex; border-bottom: 1px solid var(--border); background: #f1f5f9; }
+.tab-button {
+    flex: 1;
+    padding: 1rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+}
+.tab-button:hover { background: #e2e8f0; color: var(--primary); }
+.tab-button.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: white;
+}
+
+.tab-content { display: none; padding: 2rem; animation: fadeIn 0.3s ease; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.exec-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.exec-header-left h2 { font-size: 1.2rem; color: var(--primary); margin: 0; }
+.exec-header-left p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+.exec-header-right { text-align: right; }
+.exec-header-right .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+.exec-header-right .value { font-size: 1.1rem; color: var(--text-main); font-weight: 700; margin-top: 2px; }
+
+.exec-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+.kpi-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.kpi-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 5px; }
+.kpi-value { font-size: 1.4rem; font-weight: 700; color: var(--text-main); }
+.kpi-sub { font-size: 0.8rem; margin-top: 4px; color: var(--text-muted); }
+
+.chart-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    height: 380px;
+}
+.chart-box {
+    flex: 1;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+.chart-box h4 { margin: 0 0 10px 0; font-size: 0.95rem; font-weight: 700; color: var(--text-main); text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+
+.focus-box {
+    flex: 1;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+.focus-box h4 { margin: 0 0 10px 0; font-size: 0.95rem; font-weight: 700; color: var(--danger); border-bottom: 1px solid #eee; padding-bottom: 5px; }
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+.form-control {
+    width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem;
+}
+.form-control:focus { outline: none; border-color: var(--primary); ring: 2px solid var(--primary-light); }
+
+.btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; border: none; font-size: 0.9rem; margin-right: 8px;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-outline { background: white; border: 1px solid var(--border); color: var(--text-main); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 4px 10px; font-size: 0.8rem; background: #e0e7ff; color: var(--primary); border: 1px solid #c7d2fe; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 15px; background: white; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th { background: #f8fafc; color: var(--text-main); font-weight: 600; text-align: left; padding: 12px 15px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 10px 15px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:hover td { background-color: #f8fafc; }
+
+.inline-drill {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px; margin-top: 15px; padding: 15px; display: none;
+    border-left: 4px solid var(--primary); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+.drill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.sign-neg { color: var(--danger); font-weight: 700; }
+.sign-pos { color: var(--success); font-weight: 700; }
+.sign-warn { color: var(--warning); font-weight: 700; }
+.comment-input { width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fffbeb; font-size: 0.9rem; }
+
+.res-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid var(--border); }
+.res-btn { padding: 8px 16px; background: transparent; border: none; cursor: pointer; font-weight: 600; color: var(--text-muted); }
+.res-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); background: #f8fafc; }
+
+.step-bar { display: flex; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+.step { flex: 1; text-align: center; color: var(--text-muted); font-weight: 500; }
+.step.active { color: var(--primary); font-weight: 700; border-bottom: 3px solid var(--primary); margin-bottom: -1rem; padding-bottom: 1rem; }
+
+.no-data-msg {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+    background: #f8fafc;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>DSM Audit Dashboard</h1>
+            <p>Generation Deviation Settlement | CERC 2024</p>
+        </div>
+        <div style="text-align:right;">
+            <span class="badge" style="background:rgba(255,255,255,0.2); padding:5px 10px; border-radius:4px; font-size:0.85rem;">Accountant Mode (10x)</span>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('manual')">Manual Entry</button>
+        <button class="tab-button" onclick="switchTab('excel')">Excel Upload</button>
+        <button class="tab-button" onclick="switchTab('exec')">Executive Summary</button>
+        <button class="tab-button" onclick="switchTab('results')">Detailed Reports</button>
+    </div>
+
+    <div id="manual" class="tab-content active">
+        <div class="form-grid">
+            <div class="form-group"><label>Company Name</label><input type="text" id="m-company" class="form-control" placeholder="Enter company name"></div>
+            <div class="form-group"><label>Week Number</label><input type="text" id="m-week" class="form-control" placeholder="e.g., Week 7 or W07"></div>
+            <div class="form-group"><label>Date</label><input type="date" id="m-date" class="form-control"></div>
+            <div class="form-group"><label>Time Slot</label><select id="m-time" class="form-control"></select></div>
+            <div class="form-group"><label>Scheduled (MWh)</label><input type="number" id="m-sch" class="form-control" placeholder="0.00"></div>
+            <div class="form-group"><label>Actual (MWh)</label><input type="number" id="m-act" class="form-control" placeholder="0.00"></div>
+            <div class="form-group"><label>PPA Rate (&#8377;/MWh)</label><input type="number" id="m-rate" class="form-control" placeholder="0.00"></div>
+            <div class="form-group"><label>Frequency (Hz)</label><input type="number" id="m-freq" class="form-control" placeholder="50.00"></div>
+        </div>
+        <button class="btn btn-primary" onclick="calculateManual()">Process Entry</button>
+    </div>
+
+    <div id="excel" class="tab-content">
+        <div class="form-grid" style="margin-bottom:1rem;">
+            <div class="form-group"><label>Company Name</label><input type="text" id="e-company" class="form-control" placeholder="Enter company name"></div>
+            <div class="form-group"><label>Week Number</label><input type="text" id="e-week" class="form-control" placeholder="e.g., Week 7 or W07"></div>
+        </div>
+
+        <div class="step-bar">
+            <div class="step active" id="st1">1. Upload</div>
+            <div class="step" id="st2">2. Sheet</div>
+            <div class="step" id="st3">3. Map</div>
+        </div>
+        <div id="u-stage"><input type="file" id="file-input" class="form-control" accept=".xlsx,.xls"></div>
+        <div id="s-stage" style="display:none; margin-top:20px;"><h4>Select Sheet:</h4><div id="sheet-list" style="margin-top:10px;"></div></div>
+        <div id="m-stage" style="display:none; margin-top:20px;">
+            <div style="background:#e0f2fe; padding:10px; border-radius:6px; margin-bottom:15px;">
+                <label style="color:#0369a1; font-weight:700;">Header Row:</label>
+                <select id="head-row" class="form-control" style="width:auto; display:inline-block;" onchange="remapHeaders()"></select>
+            </div>
+            <div class="form-grid">
+                <div class="form-group"><label>Date</label><select id="c-date" class="form-control"></select></div>
+                <div class="form-group"><label>Time</label><select id="c-time" class="form-control"></select></div>
+                <div class="form-group"><label>Scheduled</label><select id="c-sch" class="form-control"></select></div>
+                <div class="form-group"><label>Actual</label><select id="c-act" class="form-control"></select></div>
+                <div class="form-group"><label>Frequency</label><select id="c-freq" class="form-control"></select></div>
+                <div class="form-group"><label>Rate</label><select id="c-rate" class="form-control"></select></div>
+            </div>
+            <button class="btn btn-primary" onclick="processBatch()">Generate Audit Report</button>
+        </div>
+    </div>
+
+    <div id="exec" class="tab-content">
+        <div id="no-res-exec" style="text-align:center; padding:40px; color:var(--text-muted);">No Data Processed. Please upload data first.</div>
+
+        <div id="exec-dash" style="display:none;">
+            <div class="exec-header">
+                <div class="exec-header-left">
+                    <h2 id="exec-company">DSM Audit Report</h2>
+                    <p id="exec-subtitle">Generation Deviation Settlement Analysis</p>
+                </div>
+                <div class="exec-header-right">
+                    <div class="label">Reporting Period</div>
+                    <div class="value" id="exec-week">-</div>
+                </div>
+            </div>
+
+            <div class="exec-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Under Injection DSM</div>
+                    <div class="kpi-value sign-neg" id="k-u-pay">0</div>
+                    <div class="kpi-sub" id="k-u-vol">0 MWh</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Over Injection DSM</div>
+                    <div class="kpi-value sign-pos" id="k-o-rec">0</div>
+                    <div class="kpi-sub" id="k-o-vol">0 MWh</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title" style="color:var(--danger);">Total Penalty</div>
+                    <div class="kpi-value sign-neg" id="k-pen">0</div>
+                    <div class="kpi-sub">Cost > PPA</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title" style="color:var(--warning);">Revenue Loss</div>
+                    <div class="kpi-value sign-warn" id="k-loss">0</div>
+                    <div class="kpi-sub">Opportunity</div>
+                </div>
+                <div class="kpi-card" style="background:#f1f5f9;">
+                    <div class="kpi-title">Net Payable</div>
+                    <div class="kpi-value" id="k-net">0</div>
+                    <div class="kpi-sub">Final Settlement</div>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="chart-box">
+                    <h4>Slot Analysis (Count)</h4>
+                    <canvas id="slotChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <h4>Financial Components (Value)</h4>
+                    <canvas id="finChart"></canvas>
+                </div>
+                <div class="focus-box">
+                    <h4>Top 10 Penalty Days</h4>
+                    <div class="table-wrap" style="margin-top:0; max-height:300px; overflow-y:auto; box-shadow:none; border:none;">
+                        <table style="width:100%;">
+                            <thead><tr><th>Date</th><th class="text-right">Penalty (₹)</th></tr></thead>
+                            <tbody id="top-pen-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-box" style="height:350px;">
+                <h4>Day-wise Trend (Penalty vs Loss)</h4>
+                <canvas id="trendChart"></canvas>
+            </div>
+
+            <div class="chart-row" style="height:500px; margin-top:25px;">
+                <div class="chart-box">
+                    <h4 style="color:var(--danger);">Continuous Penalty Blocks - 15 Min (>2 days)</h4>
+                    <div id="penalty-block-no-data" class="no-data-msg" style="display:none;">No continuous penalty blocks found</div>
+                    <canvas id="penaltyBlockChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <h4 style="color:var(--warning);">Continuous Loss Blocks - 15 Min (>2 days)</h4>
+                    <div id="loss-block-no-data" class="no-data-msg" style="display:none;">No continuous loss blocks found</div>
+                    <canvas id="lossBlockChart"></canvas>
+                </div>
+            </div>
+
+            <div style="text-align:right; margin-top:15px;">
+                <button class="btn btn-outline" onclick="genHTML()"><i class="fas fa-share-alt"></i> Share as HTML</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="results" class="tab-content">
+        <div id="res-dash" style="display:none;">
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:20px;">
+                <button class="btn btn-outline" onclick="genPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button class="btn btn-primary" onclick="genExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            </div>
+
+            <div class="res-tabs">
+                <button class="res-btn active" id="btn-u" onclick="subTab('under')">Under Injection</button>
+                <button class="res-btn" id="btn-o" onclick="subTab('over')">Over Injection</button>
+                <button class="res-btn" id="btn-m" onclick="subTab('mat')" style="color:var(--danger);">Material Deviations</button>
+                <button class="res-btn" id="btn-a" onclick="subTab('annex')">Annexure</button>
+            </div>
+
+            <div id="v-under">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Component Slab</th>
+                                <th class="text-right">Component Energy (MWh)</th>
+                                <th class="text-right">Value @ Ref Rate</th>
+                                <th class="text-right">DSM Payable</th>
+                                <th class="text-right">Penalty</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tb-under"></tbody>
+                    </table>
+                </div>
+                <div id="drill-u" class="inline-drill">
+                    <div class="drill-header">
+                        <h4 style="margin:0; color:var(--primary);">Selected Details</h4>
+                        <button class="btn btn-sm" onclick="hideDrill('u')">Close</button>
+                    </div>
+                    <div class="table-wrap" style="max-height:400px; margin-top:0;">
+                        <table id="dt-table-u">
+                            <thead><tr><th>Date</th><th>Time</th><th>Freq</th><th>Sch</th><th>Act</th><th>Dev %</th><th>Slot DSM</th><th style="background:#fffbeb;">Slab Penalty</th><th>Slot Penalty</th></tr></thead>
+                            <tbody id="dt-body-u"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="v-over" style="display:none;">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Component Slab</th>
+                                <th class="text-right">Component Energy (MWh)</th>
+                                <th class="text-right">Value @ Ref Rate</th>
+                                <th class="text-right">DSM Receivable</th>
+                                <th class="text-right">Revenue Loss</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tb-over"></tbody>
+                    </table>
+                </div>
+                <div id="drill-o" class="inline-drill">
+                    <div class="drill-header">
+                        <h4 style="margin:0; color:var(--primary);">Selected Details</h4>
+                        <button class="btn btn-sm" onclick="hideDrill('o')">Close</button>
+                    </div>
+                    <div class="table-wrap" style="max-height:400px; margin-top:0;">
+                        <table id="dt-table-o">
+                            <thead><tr><th>Date</th><th>Time</th><th>Freq</th><th>Sch</th><th>Act</th><th>Dev %</th><th>Slot DSM</th><th style="background:#fffbeb;">Slab Loss</th><th>Zero Pay Loss</th></tr></thead>
+                            <tbody id="dt-body-o"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="v-mat" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div>
+                        <h3 style="color:var(--danger); font-size:1.1rem; margin:0;">Material Deviations</h3>
+                        <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">Threshold: Penalty > User Defined Limit</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <label>Threshold (₹):</label>
+                        <input type="number" id="mat-limit" class="form-control" value="5000" style="width:100px;" onchange="fillMat()">
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table id="tb-mat">
+                        <thead><tr><th>Date</th><th>Time</th><th>Type</th><th class="text-right">Dev %</th><th class="text-right">DSM</th><th class="text-right">Penalty</th><th style="width:300px;">Reason</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="v-annex" style="display:none;">
+                <div class="table-wrap" style="max-height:600px;">
+                    <table id="tb-annex">
+                        <thead><tr><th>Date</th><th>Time</th><th>Freq</th><th class="text-right">Sch</th><th class="text-right">Act</th><th class="text-right">Dev %</th><th class="text-right">DSM</th><th class="text-right">Penalty</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let raw=[], headers=[], rows=[], comments={}, wb=null, jsonSheet=[];
+    let charts = {};
+    let companyName = "", weekNumber = "";
+
+    const fmtK = n => Math.abs(n)>=1000 ? (n/1000).toFixed(1)+'K' : n.toFixed(0);
+    const fmtC = n => Math.round(n).toLocaleString('en-IN');
+    const fmtVol = n => Math.round(n);
+
+    window.onload = () => {
+        const sel = document.getElementById('m-time');
+        // Generate 15-minute time blocks
+        for(let h=0; h<24; h++) {
+            for(let m of [0, 15, 30, 45]) {
+                let t = h.toString().padStart(2,'0')+":"+m.toString().padStart(2,'0');
+                let opt = document.createElement('option');
+                opt.value=t; opt.innerText=t;
+                sel.appendChild(opt);
+            }
+        }
+        document.getElementById('m-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('file-input').addEventListener('change', loadFile);
+    };
+
+    function switchTab(id) {
+        document.querySelectorAll('.tab-content').forEach(d=>d.style.display='none');
+        document.querySelectorAll('.tab-button').forEach(b=>b.classList.remove('active'));
+        document.getElementById(id).style.display='block';
+        const btns = document.querySelectorAll('.tab-button');
+        if(id==='manual') btns[0].classList.add('active');
+        if(id==='excel') btns[1].classList.add('active');
+        if(id==='exec') btns[2].classList.add('active');
+        if(id==='results') btns[3].classList.add('active');
+        if(id==='exec' && rows.length > 0) renderCharts();
+    }
+
+    function subTab(view) {
+        ['v-under','v-over','v-mat','v-annex'].forEach(id=>document.getElementById(id).style.display='none');
+        document.querySelectorAll('.res-btn').forEach(b=>b.classList.remove('active'));
+        document.getElementById('v-'+view).style.display='block';
+        if(view==='under') document.getElementById('btn-u').classList.add('active');
+        if(view==='over') document.getElementById('btn-o').classList.add('active');
+        if(view==='mat') document.getElementById('btn-m').classList.add('active');
+        if(view==='annex') document.getElementById('btn-a').classList.add('active');
+    }
+
+    function hideDrill(type) { document.getElementById('drill-'+type).style.display='none'; }
+
+    function interpolate(f, sF, eF, sR, eR) {
+        if(f<=sF) return sR; if(f>=eF) return eR;
+        return sR + (eR-sR)*((f-sF)/(eF-sF));
+    }
+    function getMult(f, dir, slab) {
+        let m=1.0;
+        if(slab===1) {
+            if(dir==='UI') {
+                if(f>50.05) m=0.85; else if(f>50.03) m=interpolate(f,50.03,50.05,1.0,0.85); else if(f>=49.97) m=1.0; else if(f>=49.90) m=interpolate(f,49.90,49.97,1.5,1.0); else m=1.5;
+            } else {
+                if(f>=50.10) m=-0.1; else if(f>50.05) m=0.0; else if(f>50.03) m=interpolate(f,50.03,50.05,1.0,0.5); else if(f>=49.97) m=1.0; else if(f>=49.90) m=interpolate(f,49.90,49.97,1.15,1.0); else m=1.15;
+            }
+        } else {
+            if(dir==='UI') { if(f>=50.00) m=1.0; else if(f>=49.90) m=1.5; else m=2.0; } 
+            else { if(f<50.10) m=0.0; else m=-0.1; }
+        }
+        return m;
+    }
+    function calcRow(d, t, s, a, r, f) {
+        const dev=a-s, abs=Math.abs(dev), lim=s*0.10;
+        let q1=Math.min(abs,lim), q2=Math.max(0,abs-lim);
+        const isU=dev<0, dir=isU?'UI':'OI';
+        const base = (q)=>q*10*r;
+
+        const act1 = base(q1)*getMult(f,dir,1);
+        const act2 = base(q2)*getMult(f,dir,2);
+        const totAct = act1+act2;
+        const ref1 = base(q1)*1.0, ref2 = base(q2)*1.0;
+
+        let d1=0, d2=0;
+        if(isU) { d1=act1-ref1; d2=act2-ref2; } else { d1=ref1-act1; d2=ref2-act2; }
+
+        let zeroLoss = 0;
+        if(!isU && totAct <= 0.01) zeroLoss = ref1+ref2;
+
+        return {
+            id:`${d}_${t}_${Math.random()}`, date:d, time:t, sch:s, act:a, rate:r, freq:f,
+            dev, abs, isU, pct:s>0?(dev/s)*100:0,
+            q1, q2, act1, act2, totAct, ref1, ref2, d1, d2, zeroLoss
+        };
+    }
+
+    function calculateManual() {
+        const d=document.getElementById('m-date').value, t=document.getElementById('m-time').value;
+        const s=parseFloat(document.getElementById('m-sch').value)||0, a=parseFloat(document.getElementById('m-act').value)||0;
+        const r=parseFloat(document.getElementById('m-rate').value)||0, f=parseFloat(document.getElementById('m-freq').value)||50;
+        companyName = document.getElementById('m-company').value || "Company";
+        weekNumber = document.getElementById('m-week').value || "-";
+        if(!d) return alert("Date required");
+        rows=[calcRow(d,t,s,a,r,f)]; render();
+    }
+
+    function loadFile(e) {
+        const f=e.target.files[0]; if(!f) return;
+        const r=new FileReader();
+        r.onload = (e) => {
+            wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+            const d = document.getElementById('sheet-list'); d.innerHTML='';
+            wb.SheetNames.forEach(n => {
+                const b = document.createElement('button');
+                b.className = 'btn btn-outline'; b.innerText = n;
+                b.onclick = () => loadSheet(n);
+                d.appendChild(b);
+            });
+            document.getElementById('u-stage').style.display='none';
+            document.getElementById('s-stage').style.display='block';
+            updateStep(2);
+        };
+        r.readAsArrayBuffer(f);
+    }
+    function loadSheet(n) {
+        const ws=wb.Sheets[n]; jsonSheet=XLSX.utils.sheet_to_json(ws,{header:1});
+        const sel=document.getElementById('head-row'); sel.innerHTML='';
+        for(let i=0; i<Math.min(10,jsonSheet.length); i++) {
+            let opt=document.createElement('option'); opt.value=i; opt.innerText=`Row ${i+1}: ${jsonSheet[i].slice(0,3).join(', ')}`;
+            if(i===1) opt.selected=true;
+            sel.appendChild(opt);
+        }
+        mapHeaders();
+        document.getElementById('s-stage').style.display='none';
+        document.getElementById('m-stage').style.display='block';
+        updateStep(3);
+    }
+    function remapHeaders() { mapHeaders(); }
+    function mapHeaders() {
+        const idx = parseInt(document.getElementById('head-row').value);
+        headers = jsonSheet[idx] || [];
+        raw = jsonSheet.slice(idx+1);
+        ['c-date','c-time','c-sch','c-act','c-freq','c-rate'].forEach(id=>{
+            const s=document.getElementById(id); s.innerHTML='';
+            headers.forEach((h,i)=>{
+                let opt=document.createElement('option');
+                opt.value=i; opt.innerText=h||`Col ${i+1}`;
+                s.appendChild(opt);
+            });
+        });
+        const set = (k,id) => {
+            let i = headers.findIndex(h => h && k.some(x=>String(h).toLowerCase().includes(x)));
+            if(i>-1) document.getElementById(id).value = i;
+        };
+        set(['date'], 'c-date'); set(['time','slot'], 'c-time'); set(['sch','sched'], 'c-sch');
+        set(['act'], 'c-act'); set(['freq','hz'], 'c-freq'); set(['rate','ppa'], 'c-rate');
+    }
+    function processBatch() {
+        const c = { d:document.getElementById('c-date').value, t:document.getElementById('c-time').value, s:document.getElementById('c-sch').value, a:document.getElementById('c-act').value, f:document.getElementById('c-freq').value, r:document.getElementById('c-rate').value };
+        companyName = document.getElementById('e-company').value || "Company";
+        weekNumber = document.getElementById('e-week').value || "-";
+        comments={};
+        rows = raw.map(r => {
+            let d = r[c.d];
+            if(typeof d === 'number' && d>30000) d = new Date(Math.round((d-25569)*864e5)).toISOString().split('T')[0];
+
+            // Parse time - handle both HH:MM and HH:MM:SS formats
+            let timeVal = r[c.t];
+            if(typeof timeVal === 'number') {
+                // Excel time serial number
+                let hours = Math.floor(timeVal * 24);
+                let mins = Math.floor((timeVal * 24 * 60) % 60);
+                timeVal = hours.toString().padStart(2,'0') + ':' + mins.toString().padStart(2,'0');
+            } else if(typeof timeVal === 'string') {
+                // Already string format - keep as is
+                timeVal = timeVal.split(':').slice(0,2).join(':'); // Take only HH:MM
+            }
+
+            return calcRow(d, timeVal, parseFloat(r[c.s])||0, parseFloat(r[c.a])||0, parseFloat(r[c.r])||0, parseFloat(r[c.f])||50);
+        }).filter(r => r.sch>0);
+        render();
+    }
+
+    function render() {
+        document.getElementById('no-res-exec').style.display='none';
+        document.getElementById('exec-dash').style.display='block';
+        document.getElementById('res-dash').style.display='block';
+        switchTab('exec');
+
+        document.getElementById('exec-company').innerText = companyName || "DSM Audit Report";
+        document.getElementById('exec-week').innerText = weekNumber || "-";
+
+        const net = rows.reduce((a,b)=>a + (b.isU ? -b.totAct : b.totAct), 0);
+        const uPen = rows.filter(r=>r.isU).reduce((s,r)=>s+(r.d1+r.d2),0);
+        const oLoss = rows.filter(r=>!r.isU).reduce((s,r)=>s+(r.d1+r.d2),0);
+        const uPay = rows.filter(r=>r.isU).reduce((s,r)=>s+r.totAct,0);
+        const oRec = rows.filter(r=>!r.isU).reduce((s,r)=>s+r.totAct,0);
+        const uVol = rows.filter(r=>r.isU).reduce((s,r)=>s+r.abs,0);
+        const oVol = rows.filter(r=>!r.isU).reduce((s,r)=>s+r.abs,0);
+
+        document.getElementById('k-u-pay').innerText = `-${fmtK(Math.abs(uPay))}`;
+        document.getElementById('k-o-rec').innerText = `+${fmtK(oRec)}`;
+        document.getElementById('k-u-vol').innerText = `${fmtVol(uVol)} MWh`;
+        document.getElementById('k-o-vol').innerText = `${fmtVol(oVol)} MWh`;
+        document.getElementById('k-pen').innerText = `₹${fmtC(Math.abs(uPen))}`;
+        document.getElementById('k-loss').innerText = `₹${fmtC(Math.abs(oLoss))}`;
+        document.getElementById('k-net').innerText = `₹${fmtK(net)}`;
+        document.getElementById('k-net').style.color = net<0 ? '#ef4444' : '#10b981';
+
+        renderCharts();
+        fillTop10();
+        fillSlab('tb-under', true, 'u');
+        fillSlab('tb-over', false, 'o');
+        fillMat();
+        fillLedger();
+    }
+
+    function renderCharts() {
+        if(charts.slot) charts.slot.destroy();
+        if(charts.fin) charts.fin.destroy();
+        if(charts.trend) charts.trend.destroy();
+        if(charts.penaltyBlock) charts.penaltyBlock.destroy();
+        if(charts.lossBlock) charts.lossBlock.destroy();
+
+        // 1. Slot Doughnut
+        const cU = rows.filter(r=>r.isU).length;
+        const cO_10 = rows.filter(r=>!r.isU && Math.abs(r.pct)>10).length;
+        const cOther = rows.length - cU - cO_10;
+        const ctx1 = document.getElementById('slotChart').getContext('2d');
+        charts.slot = new Chart(ctx1, {
+            type: 'doughnut',
+            data: { labels: ['Under', 'Over >10%', 'Other'], datasets: [{ data:[cU,cO_10,cOther], backgroundColor:['#ef4444','#f59e0b','#10b981'] }] },
+            options: { responsive:true, maintainAspectRatio:false }
+        });
+
+        // 2. Financial Pie
+        const vUP = Math.abs(rows.filter(r=>r.isU).reduce((s,r)=>s+r.totAct,0));
+        const vOR = rows.filter(r=>!r.isU).reduce((s,r)=>s+r.totAct,0);
+        const vPen = Math.abs(rows.filter(r=>r.isU).reduce((s,r)=>s+(r.d1+r.d2),0));
+        const vLoss = rows.filter(r=>!r.isU).reduce((s,r)=>s+(r.d1+r.d2),0);
+        const ctx2 = document.getElementById('finChart').getContext('2d');
+        charts.fin = new Chart(ctx2, {
+            type: 'pie',
+            data: { labels: ['UI Payable','OI Rec','Penalty','Rev Loss'], datasets: [{ data:[vUP,vOR,vPen,vLoss], backgroundColor:['#ef4444','#10b981','#7f1d1d','#b45309'] }] },
+            options: { responsive:true, maintainAspectRatio:false }
+        });
+
+        // 3. Trend Line
+        const dates = [...new Set(rows.map(r=>r.date))].sort();
+        const dPen = dates.map(d => rows.filter(r=>r.date===d && r.isU).reduce((s,r)=>s+(r.d1+r.d2),0)).map(v=>Math.abs(v));
+        const dLoss = dates.map(d => rows.filter(r=>r.date===d && !r.isU).reduce((s,r)=>s+(r.d1+r.d2),0));
+        const ctx3 = document.getElementById('trendChart').getContext('2d');
+        charts.trend = new Chart(ctx3, {
+            type: 'line',
+            data: { labels: dates, datasets: [{ label:'Penalty', data:dPen, borderColor:'#ef4444', tension:0.3 }, { label:'Rev Loss', data:dLoss, borderColor:'#f59e0b', tension:0.3 }] },
+            options: { responsive:true, maintainAspectRatio:false }
+        });
+
+        // 4 & 5. NEW: 15-MINUTE BLOCK CHARTS - Continuous analysis (>2 days)
+        const THRESHOLD = 2;
+
+        // Generate all possible 15-min time blocks
+        const allTimeBlocks = [];
+        for(let h=0; h<24; h++) {
+            for(let m of [0, 15, 30, 45]) {
+                allTimeBlocks.push(h.toString().padStart(2,'0')+':'+m.toString().padStart(2,'0'));
+            }
+        }
+
+        // Analyze each 15-minute block
+        const blockData = allTimeBlocks.map(block => {
+            const penaltyDates = new Set(
+                rows.filter(r => {
+                    const impact = Math.abs(r.d1 + r.d2);
+                    return r.time === block && r.isU && impact > 0;
+                }).map(r => r.date)
+            );
+
+            const lossDates = new Set(
+                rows.filter(r => {
+                    const impact = Math.abs(r.d1 + r.d2);
+                    return r.time === block && !r.isU && impact > 0;
+                }).map(r => r.date)
+            );
+
+            const penaltyAmount = rows
+                .filter(r => r.time === block && r.isU)
+                .reduce((sum, r) => sum + Math.abs(r.d1 + r.d2), 0);
+
+            const lossAmount = rows
+                .filter(r => r.time === block && !r.isU)
+                .reduce((sum, r) => sum + Math.abs(r.d1 + r.d2), 0);
+
+            return {
+                block,
+                penaltyDays: penaltyDates.size,
+                lossDays: lossDates.size,
+                penaltyAmount,
+                lossAmount
+            };
+        });
+
+        // Filter: Continuous blocks (>2 days)
+        const penaltyBlocks = blockData.filter(b => b.penaltyDays > THRESHOLD);
+        const lossBlocks = blockData.filter(b => b.lossDays > THRESHOLD);
+
+        // Render Penalty Block Chart
+        const ctx4 = document.getElementById('penaltyBlockChart').getContext('2d');
+        if(penaltyBlocks.length === 0) {
+            document.getElementById('penalty-block-no-data').style.display = 'block';
+            ctx4.canvas.style.display = 'none';
+        } else {
+            document.getElementById('penalty-block-no-data').style.display = 'none';
+            ctx4.canvas.style.display = 'block';
+
+            charts.penaltyBlock = new Chart(ctx4, {
+                type: 'bar',
+                data: {
+                    labels: penaltyBlocks.map(b => b.block),
+                    datasets: [
+                        {
+                            label: 'Days Count',
+                            data: penaltyBlocks.map(b => b.penaltyDays),
+                            backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                            borderColor: '#dc2626',
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Total Amount (₹)',
+                            data: penaltyBlocks.map(b => b.penaltyAmount),
+                            type: 'line',
+                            borderColor: '#7f1d1d',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#7f1d1d',
+                            yAxisID: 'y1',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            title: { display: true, text: '15-Minute Time Block', font: { weight: 'bold' } },
+                            ticks: { maxRotation: 90, minRotation: 45, font: { size: 9 } }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Number of Days', font: { weight: 'bold' }, color: '#1e293b' },
+                            beginAtZero: true,
+                            ticks: { color: '#1e293b', stepSize: 1 }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: 'Total Penalty (₹)', font: { weight: 'bold' }, color: '#7f1d1d' },
+                            beginAtZero: true,
+                            grid: { drawOnChartArea: false },
+                            ticks: { 
+                                color: '#7f1d1d',
+                                callback: function(value) { return '₹' + (value/1000).toFixed(0) + 'K'; }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                afterBody: function(tooltipItems) {
+                                    const idx = tooltipItems[0].dataIndex;
+                                    const days = penaltyBlocks[idx].penaltyDays;
+                                    const amt = penaltyBlocks[idx].penaltyAmount;
+                                    const avg = days > 0 ? amt / days : 0;
+                                    return [`
+--- Summary ---`, `Block: ${penaltyBlocks[idx].block}`, `Days: ${days}`, `Total: ₹${amt.toFixed(0)}`, `Avg/day: ₹${avg.toFixed(0)}`];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Render Loss Block Chart
+        const ctx5 = document.getElementById('lossBlockChart').getContext('2d');
+        if(lossBlocks.length === 0) {
+            document.getElementById('loss-block-no-data').style.display = 'block';
+            ctx5.canvas.style.display = 'none';
+        } else {
+            document.getElementById('loss-block-no-data').style.display = 'none';
+            ctx5.canvas.style.display = 'block';
+
+            charts.lossBlock = new Chart(ctx5, {
+                type: 'bar',
+                data: {
+                    labels: lossBlocks.map(b => b.block),
+                    datasets: [
+                        {
+                            label: 'Days Count',
+                            data: lossBlocks.map(b => b.lossDays),
+                            backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                            borderColor: '#d97706',
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Total Amount (₹)',
+                            data: lossBlocks.map(b => b.lossAmount),
+                            type: 'line',
+                            borderColor: '#b45309',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#b45309',
+                            yAxisID: 'y1',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            title: { display: true, text: '15-Minute Time Block', font: { weight: 'bold' } },
+                            ticks: { maxRotation: 90, minRotation: 45, font: { size: 9 } }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Number of Days', font: { weight: 'bold' }, color: '#1e293b' },
+                            beginAtZero: true,
+                            ticks: { color: '#1e293b', stepSize: 1 }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: 'Total Loss (₹)', font: { weight: 'bold' }, color: '#b45309' },
+                            beginAtZero: true,
+                            grid: { drawOnChartArea: false },
+                            ticks: { 
+                                color: '#b45309',
+                                callback: function(value) { return '₹' + (value/1000).toFixed(0) + 'K'; }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                afterBody: function(tooltipItems) {
+                                    const idx = tooltipItems[0].dataIndex;
+                                    const days = lossBlocks[idx].lossDays;
+                                    const amt = lossBlocks[idx].lossAmount;
+                                    const avg = days > 0 ? amt / days : 0;
+                                    return [`
+--- Summary ---`, `Block: ${lossBlocks[idx].block}`, `Days: ${days}`, `Total: ₹${amt.toFixed(0)}`, `Avg/day: ₹${avg.toFixed(0)}`];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    function fillTop10() {
+        const worst = rows.filter(r=>r.isU).sort((a,b)=>(a.d1+a.d2)-(b.d1+b.d2)).slice(0,10);
+        const b = document.getElementById('top-pen-body'); b.innerHTML='';
+        worst.forEach(r => {
+            b.innerHTML += `<tr><td>${r.date} ${r.time}</td><td class="text-right sign-neg">₹${Math.abs(r.d1+r.d2).toFixed(0)}</td></tr>`;
+        });
+    }
+
+    function fillSlab(id, isU, pfx) {
+        const sub = rows.filter(r => r.isU === isU);
+        let s1={e:0,b:0,a:0,p:0}, s2={e:0,b:0,a:0,p:0};
+        sub.forEach(r => {
+            let pen = r.d1+r.d2;
+            let val = isU ? -r.totAct : r.totAct;
+            if(Math.abs(r.pct)<=10) { s1.e+=r.abs; s1.b+=r.ref1+r.ref2; s1.a+=val; s1.p+=pen; }
+            else { s2.e+=r.abs; s2.b+=r.ref1+r.ref2; s2.a+=val; s2.p+=pen; }
+        });
+        const rHTML = (l,d,c) => `<tr><td>${l}</td><td class="text-right">${d.e.toFixed(2)}</td><td class="text-right">₹${d.b.toFixed(2)}</td><td class="text-right">₹${Math.abs(d.a).toFixed(2)}</td><td class="text-right ${isU?'sign-neg':'sign-warn'}">₹${Math.abs(d.p).toFixed(2)}</td><td class="text-center"><button class="btn-sm" onclick="drill('${isU?'u':'o'}','${c}')">View</button></td></tr>`;
+        document.getElementById(id).innerHTML = rHTML("Up to 10%",s1,'s1') + rHTML("More than 10%",s2,'s2');
+    }
+
+    function drill(type, code) {
+        const isU = type==='u';
+        document.getElementById('drill-'+type).style.display='block';
+        const b = document.getElementById('dt-body-'+type); b.innerHTML='';
+        const sub = rows.filter(r => r.isU === isU && (code==='s1'||r.q2>0));
+        sub.forEach(r => {
+            let slabP = code==='s1' ? r.d1 : r.d2;
+            let totP = r.d1+r.d2;
+            let z = !isU && r.zeroLoss>0 ? `₹${r.zeroLoss.toFixed(2)}` : '-';
+            let extra = isU ? '' : `<td class="text-right">${z}</td>`;
+            b.innerHTML += `<tr><td>${r.date}</td><td>${r.time}</td><td>${r.freq}</td><td class="text-right">${r.sch.toFixed(2)}</td><td class="text-right">${r.act.toFixed(2)}</td><td class="text-right">${r.pct.toFixed(2)}%</td><td class="text-right">${(isU?-r.totAct:r.totAct).toFixed(2)}</td><td class="text-right" style="background:#fffbeb;">${slabP.toFixed(2)}</td>${extra}<td class="text-right">${totP.toFixed(2)}</td></tr>`;
+        });
+    }
+
+    function fillMat() {
+        const thres = parseFloat(document.getElementById('mat-limit').value)||5000;
+        const sub = rows.filter(r => Math.abs(r.d1+r.d2)>thres).sort((a,b)=>Math.abs(b.d1+b.d2)-Math.abs(a.d1+a.d2));
+        const b = document.getElementById('tb-mat').querySelector('tbody'); b.innerHTML='';
+        if(sub.length===0) b.innerHTML='<tr><td colspan="7" class="text-center">No records found.</td></tr>';
+        sub.forEach(r => {
+            let val = comments[r.id]||"";
+            b.innerHTML += `<tr><td>${r.date}</td><td>${r.time}</td><td>${r.isU?'Under':'Over'}</td><td class="text-right">${r.pct.toFixed(2)}%</td><td class="text-right">${(r.isU?-r.totAct:r.totAct).toFixed(2)}</td><td class="text-right sign-neg">${(r.d1+r.d2).toFixed(2)}</td><td><input class="comment-input" value="${val}" oninput="comments['${r.id}']=this.value"></td></tr>`;
+        });
+    }
+
+    function fillLedger() {
+        const b = document.getElementById('tb-annex').querySelector('tbody'); b.innerHTML='';
+        rows.forEach(r => {
+            b.innerHTML += `<tr><td>${r.date}</td><td>${r.time}</td><td>${r.freq}</td><td class="text-right">${r.sch.toFixed(2)}</td><td class="text-right">${r.act.toFixed(2)}</td><td class="text-right">${r.pct.toFixed(2)}%</td><td class="text-right">${(r.isU?-r.totAct:r.totAct).toFixed(2)}</td><td class="text-right">${(r.d1+r.d2).toFixed(2)}</td></tr>`;
+        });
+    }
+
+    function updateStep(n) { [1,2,3].forEach(i => { document.getElementById('st'+i).className = i===n ? 'step active' : 'step'; }); }
+
+    function genExcel() {
+        if(!rows.length) return;
+        const data = rows.map(r => ({
+            Date: r.date, Time: r.time, Freq: r.freq, Sch: r.sch, Act: r.act, Deviation: r.dev,
+            Type: r.isU?'Under':'Over', DSM: r.isU?-r.totAct:r.totAct, Penalty: r.d1+r.d2,
+            Reason: comments[r.id]||""
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const w = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(w, ws, "Audit");
+        XLSX.writeFile(w, "DSM_Audit_Report.xlsx");
+    }
+
+    function genPDF() {
+        const el = document.getElementById('res-dash');
+        const inps = document.querySelectorAll('.comment-input');
+        inps.forEach(i => { i.parentElement.innerHTML = `<span>${i.value}</span>`; });
+        html2pdf().set({ margin:0.4, filename:'DSM_Audit.pdf', image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'in',format:'a4',orientation:'landscape'} }).from(el).save().then(()=>alert("PDF Saved. Refresh page to edit."));
+    }
+
+    function genHTML() {
+        if(!charts.slot || !charts.fin || !charts.trend) {
+            alert('No charts to export. Please ensure Executive Summary has been viewed.');
+            return;
+        }
+
+        const clone = document.cloneNode(true);
+        const execDash = clone.querySelector('#exec-dash');
+
+        if(execDash) {
+            const slotCanvas = execDash.querySelector('#slotChart');
+            const finCanvas = execDash.querySelector('#finChart');
+            const trendCanvas = execDash.querySelector('#trendChart');
+            const penaltyBlockCanvas = execDash.querySelector('#penaltyBlockChart');
+            const lossBlockCanvas = execDash.querySelector('#lossBlockChart');
+
+            if(slotCanvas) {
+                const slotImg = document.createElement('img');
+                slotImg.src = charts.slot.toBase64Image();
+                slotImg.style.width = '100%';
+                slotImg.style.height = '100%';
+                slotCanvas.parentNode.replaceChild(slotImg, slotCanvas);
+            }
+
+            if(finCanvas) {
+                const finImg = document.createElement('img');
+                finImg.src = charts.fin.toBase64Image();
+                finImg.style.width = '100%';
+                finImg.style.height = '100%';
+                finCanvas.parentNode.replaceChild(finImg, finCanvas);
+            }
+
+            if(trendCanvas) {
+                const trendImg = document.createElement('img');
+                trendImg.src = charts.trend.toBase64Image();
+                trendImg.style.width = '100%';
+                trendImg.style.height = '100%';
+                trendCanvas.parentNode.replaceChild(trendImg, trendCanvas);
+            }
+
+            if(charts.penaltyBlock && penaltyBlockCanvas) {
+                const penaltyBlockImg = document.createElement('img');
+                penaltyBlockImg.src = charts.penaltyBlock.toBase64Image();
+                penaltyBlockImg.style.width = '100%';
+                penaltyBlockImg.style.height = '100%';
+                penaltyBlockCanvas.parentNode.replaceChild(penaltyBlockImg, penaltyBlockCanvas);
+            }
+
+            if(charts.lossBlock && lossBlockCanvas) {
+                const lossBlockImg = document.createElement('img');
+                lossBlockImg.src = charts.lossBlock.toBase64Image();
+                lossBlockImg.style.width = '100%';
+                lossBlockImg.style.height = '100%';
+                lossBlockCanvas.parentNode.replaceChild(lossBlockImg, lossBlockCanvas);
+            }
+        }
+
+        const html = clone.documentElement.outerHTML;
+        const blob = new Blob([html], {type: 'text/html'});
+        saveAs(blob, "DSM_Audit_Result.html");
+    }
+
+</script>
+</body>
+</html>
