@@ -17,11 +17,6 @@ config = {
                 'email'   : 'user1@yourorg.com',
                 'password': '2533a3996a9069b9ac809867e5f2bd9f150c08c1334519d2e30827f8c23e559f'
             },
-            'user2': {
-                'name'    : 'user2',
-                'email'   : 'user2@yourorg.com',
-                'password': '2533a3996a9069b9ac809867e5f2bd9f150c08c1334519d2e30827f8c23e559f'
-            },
         }
     }
 }
